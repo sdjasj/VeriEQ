@@ -1366,7 +1366,7 @@ func checkSanitizerErrorFromStderr(stderr string) bool {
 }
 
 func main() {
-	TestOfSimulator()
+	TestWidthAndDepth()
 }
 
 // TestSimpleCXXRTL 用固定电路验证 CXXRTL 流程能否正常工作。
@@ -1619,4 +1619,24 @@ func TestOfSimulator() {
 		tasks <- struct{}{}
 		// time.Sleep(time.Millisecond * 10)
 	}
+}
+
+func TestWidthAndDepth() {
+	generator := CodeGenerator.NewExpressionGenerator()
+	generator.OutputNums = 1
+	generator.MaxDepth = 3
+	generator.AssignCount = 32
+	widthContent := generator.GenerateLoopFreeModule()
+	generator = CodeGenerator.NewExpressionGenerator()
+	generator.OutputNums = 1
+	generator.MaxDepth = 8
+	generator.AssignCount = 1
+	depthContent := generator.GenerateLoopFreeModule()
+	file, _ := os.Create("width.v")
+	file.Write([]byte(widthContent))
+	file.Close()
+	file, _ = os.Create("depth.v")
+	file.Write([]byte(depthContent))
+	file.Close()
+	fmt.Println("finish")
 }

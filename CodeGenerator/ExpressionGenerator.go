@@ -51,7 +51,7 @@ func NewExpressionGenerator() *ExpressionGenerator {
 		MaxDepth:                3, // 默认最大深度
 		MaxWidth:                3, // 默认最大宽度
 		AssignCount:             5,
-		AlwaysCount:             1,
+		AlwaysCount:             0,
 		ProbabilityOfRange:      0.8,
 		ProbabilityOfSigned:     0.5,
 		MaxRangeWidth:           30,
@@ -166,6 +166,10 @@ func (g *ExpressionGenerator) GenerateExpression(depth int) Expression {
 	// 随机选择表达式类型
 	exprType := rand.Intn(6) // 增加位拼接表达式的选项
 
+	if depth > 0 {
+		exprType = rand.Intn(4)
+	}
+
 	switch exprType {
 	case 0:
 		// 生成二元表达式
@@ -177,14 +181,15 @@ func (g *ExpressionGenerator) GenerateExpression(depth int) Expression {
 		// 生成三元表达式
 		return g.generateTernaryExpression(depth)
 	case 3:
-		// 生成变量表达式
-		return g.generateVariableExpression()
-	case 4:
-		// 生成数字表达式
-		return g.generateNumberExpression()
-	case 5:
 		// 生成位拼接表达式
 		return g.generateConcatenationExpression(depth)
+	case 4:
+		// 生成变量表达式
+		return g.generateVariableExpression()
+	case 5:
+		// 生成数字表达式
+		return g.generateNumberExpression()
+
 	default:
 		return g.generateBasicExpression()
 	}
@@ -376,7 +381,7 @@ func (g *ExpressionGenerator) GenerateLoopFreeAssignment(target *Variable) *Assi
 	if target == nil {
 		target = g.AddWireVariable("")
 	}
-	g.CurrentDefinedVars = append(g.CurrentDefinedVars, target)
+	//g.CurrentDefinedVars = append(g.CurrentDefinedVars, target)
 
 	return &AssignExpression{
 		Operand1: target,
@@ -448,6 +453,9 @@ func (g *ExpressionGenerator) GenerateLoopFreeModule() string {
 	for i := 0; i < g.AssignCount; i++ {
 		assignExpressions = append(assignExpressions, g.GenerateLoopFreeAssignment(nil))
 	}
+	for i := 0; i < g.AssignCount; i++ {
+		g.CurrentDefinedVars = append(g.CurrentDefinedVars, assignExpressions[i].Operand1)
+	}
 
 	alwaysBlocks := make([]*AlwaysBlock, 0)
 
@@ -466,10 +474,28 @@ func (g *ExpressionGenerator) GenerateLoopFreeModule() string {
 		alwaysBlocks = append(alwaysBlocks, RandomAlwaysBlockWithTargets(g, alwaysClocks, g.MaxDepth, g.MaxWidth))
 	}
 
-	for i := 0; i < g.OutputNums; i++ {
-		assignExpressions = append(assignExpressions, g.GenerateLoopFreeOutputAssignment(g.OutputVars[i]))
+	//for i := 0; i < g.OutputNums; i++ {
+	//	assignExpressions = append(assignExpressions, g.GenerateLoopFreeOutputAssignment(g.OutputVars[i]))
+	//}
+	outputVar := g.OutputVars[0]
+	outputStr := fmt.Sprintf("    assign %s = ", outputVar.Name)
+	flag := false
+	for i := 0; i < len(g.CurrentDefinedVars); i++ {
+		v := g.CurrentDefinedVars[i]
+		if _, ok := isInput[v]; ok {
+			continue
+		} else {
+			if flag {
+				outputStr += fmt.Sprintf("+ %s ", v.Name)
+			} else {
+				outputStr += fmt.Sprintf("%s ", v.Name)
+				flag = true
+			}
+		}
 	}
-	g.CurrentDefinedVars = append(g.CurrentDefinedVars, g.OutputVars...)
+	outputStr += ";\n"
+	g.CurrentDefinedVars = append(g.CurrentDefinedVars, outputVar)
+	//g.CurrentDefinedVars = append(g.CurrentDefinedVars, g.OutputVars...)
 
 	//生成整个模块
 	// 生成模块声明
@@ -541,6 +567,7 @@ func (g *ExpressionGenerator) GenerateLoopFreeModule() string {
 	for _, assign := range assignExpressions {
 		moduleStr += assign.GenerateString() + "\n"
 	}
+	moduleStr += outputStr
 
 	// 生成always块
 	for _, always := range alwaysBlocks {
