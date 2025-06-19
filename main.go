@@ -1366,7 +1366,7 @@ func checkSanitizerErrorFromStderr(stderr string) bool {
 }
 
 func main() {
-	TestWidthAndDepth()
+	TestEqualExpressionGenerator()
 }
 
 // TestSimpleCXXRTL 用固定电路验证 CXXRTL 流程能否正常工作。
@@ -1639,4 +1639,29 @@ func TestWidthAndDepth() {
 	file.Write([]byte(depthContent))
 	file.Close()
 	fmt.Println("finish")
+}
+
+func TestEqualExpressionGenerator() {
+	g := CodeGenerator.NewExpressionGenerator()
+
+	// 设置生成几个等价版本
+	equalNumber := 3
+
+	// 生成多个等价模块
+	modules := g.GenerateLoopFreeEquivalentModules(equalNumber)
+
+	for i, module := range modules {
+		moduleFile := fmt.Sprintf("test_eq%d.v", i)
+		err := os.WriteFile(moduleFile, []byte(module), 0644)
+		if err != nil {
+			panic(err)
+		}
+	}
+	tb := []byte(g.GenerateTb())
+	err := os.WriteFile("tb.v", tb, 0644)
+	if err != nil {
+		panic(err)
+	}
+	g.GenerateInputFile()
+
 }

@@ -48,6 +48,13 @@ func NewVar(varType VerilogVarType) *Variable {
 	}
 }
 
+func (v *Variable) GetWidth() int {
+	if v.hasRange {
+		return v.Range.GetWidth()
+	}
+	return 1
+}
+
 // GetName 返回变量名
 func (v *Variable) GetName() string {
 	return v.Name
