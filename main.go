@@ -1643,25 +1643,33 @@ func TestWidthAndDepth() {
 
 func TestEqualExpressionGenerator() {
 	g := CodeGenerator.NewExpressionGenerator()
+	g.Name = "top"
 
-	// 设置生成几个等价版本
-	equalNumber := 3
-
-	// 生成多个等价模块
+	equalNumber := 30
 	modules := g.GenerateLoopFreeEquivalentModules(equalNumber)
 
-	for i, module := range modules {
-		moduleFile := fmt.Sprintf("test_eq%d.v", i)
-		err := os.WriteFile(moduleFile, []byte(module), 0644)
-		if err != nil {
-			panic(err)
-		}
+	// 将所有模块合并在一个文件中
+	var combinedModule strings.Builder
+	for _, module := range modules {
+		combinedModule.WriteString(module)
+		combinedModule.WriteString("\n\n")
 	}
-	tb := []byte(g.GenerateTb())
-	err := os.WriteFile("tb.v", tb, 0644)
-	if err != nil {
+
+	if err := os.WriteFile("test.v", []byte(combinedModule.String()), 0644); err != nil {
 		panic(err)
 	}
-	g.GenerateInputFile()
 
+	// 生成多模块 testbench，自动实例化 top_eq0 ~ top_eqN
+	tb := g.GenerateEquivalenceCheckTb(equalNumber)
+	if err := os.WriteFile("tb.v", []byte(tb), 0644); err != nil {
+		panic(err)
+	}
+
+	// 生成输入激励
+	input := g.GenerateInputFile()
+	if err := os.WriteFile("input.txt", []byte(input), 0644); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("✅ test.v, tb.v, input.txt 已生成，模块均已内联")
 }

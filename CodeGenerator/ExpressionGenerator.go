@@ -682,7 +682,11 @@ func (g *ExpressionGenerator) GenerateLoopFreeEquivalentModules(equalNumber int)
 		}
 
 		// 模块声明头
-		moduleStr := fmt.Sprintf("`timescale 1ns/1ps\nmodule %s_eq%d (", g.Name, eqIdx)
+		moduleStr := ""
+		if eqIdx == 0 {
+			moduleStr += "`timescale 1ns/1ps\n"
+		}
+		moduleStr += fmt.Sprintf("module %s_eq%d (", g.Name, eqIdx)
 
 		for i, input := range g.InputVars {
 			moduleStr += input.GetName()
@@ -1167,11 +1171,12 @@ func (g *ExpressionGenerator) GenerateEquivalenceCheckTb(equalNumber int) string
 			signed = "signed "
 		}
 		if v.hasRange {
-			tbStr += fmt.Sprintf("reg %s[%d:%d] %s;\n", signed, v.Range.r, v.Range.l, v.Name)
+			tbStr += fmt.Sprintf("reg %s [%d:%d] %s;\n", signed, v.Range.r, v.Range.l, v.Name)
 		} else {
 			tbStr += fmt.Sprintf("reg %s%s;\n", signed, v.Name)
 		}
 	}
+
 	// 输出端口声明（每个模块一组）
 	for i := 0; i < equalNumber; i++ {
 		for _, v := range g.OutputVars {
@@ -1181,7 +1186,7 @@ func (g *ExpressionGenerator) GenerateEquivalenceCheckTb(equalNumber int) string
 			}
 			name := fmt.Sprintf("%s_eq%d", v.Name, i)
 			if v.hasRange {
-				tbStr += fmt.Sprintf("wire %s[%d:%d] %s;\n", signed, v.Range.r, v.Range.l, name)
+				tbStr += fmt.Sprintf("wire %s [%d:%d] %s;\n", signed, v.Range.r, v.Range.l, name)
 			} else {
 				tbStr += fmt.Sprintf("wire %s%s;\n", signed, name)
 			}
@@ -1210,35 +1215,75 @@ func (g *ExpressionGenerator) GenerateEquivalenceCheckTb(equalNumber int) string
 		tbStr += ");\n"
 	}
 
-	// 测试逻辑（读取 input.txt，执行并比较输出）
-	tbStr += `
-integer i, fin;
+	// 构造 scan 格式字符串和变量列表
+	scanFormat := `"`
+	scanVars := ""
+	totalVars := len(g.InputVars)
+	for i := 0; i < totalVars; i++ {
+		if i == totalVars-1 {
+			scanFormat += "%d\\n"
+		} else {
+			scanFormat += "%d "
+		}
+	}
+	scanFormat += `", `
+	for i, v := range g.InputVars {
+		scanVars += v.Name
+		if i != totalVars-1 {
+			scanVars += ", "
+		}
+	}
+
+	tbStr += fmt.Sprintf(`
+integer i, fin, fout, status;
 initial begin
-    fin = $fopen("input.txt", "r");
+    fin = $fopen("%s", "r");
     if (fin == 0) begin
         $display("Cannot open input.txt");
         $finish;
     end
+    fout = $fopen("output.txt", "w");
+    if (fout == 0) begin
+        $display("Cannot open output.txt");
+        $finish;
+    end
 
     for (i = 0; i < NUM_VECTORS; i = i + 1) begin
-        // 输入扫描
+        status = $fscanf(fin, %s%s);
+        if (status < %d) begin
+            $display("WARNING: input.txt format error at line %%0d", i);
+            $finish;
+        end
+        #20;
+`, g.TestBenchInputFileName, scanFormat, scanVars, totalVars)
+
+	// 添加输出一致性比较逻辑
+	tbStr += `        if (
 `
-	for _, v := range g.InputVars {
-		tbStr += fmt.Sprintf("        $fscanf(fin, \"%%d\", %s);\n", v.Name)
-	}
 
-	tbStr += "        #10;\n"
-
-	// 输出比较逻辑
 	for i := 1; i < equalNumber; i++ {
-		for _, v := range g.OutputVars {
-			tbStr += fmt.Sprintf("        if (%s_eq0 !== %s_eq%d) $display(\"Mismatch on %%s at vector %%0d: %%0d vs %%0d\", \"%s\", i, %s_eq0, %s_eq%d);\n",
-				v.Name, v.Name, i, v.Name, v.Name, v.Name, i)
+		for j, v := range g.OutputVars {
+			tbStr += fmt.Sprintf("            %s_eq0 !== %s_eq%d", v.Name, v.Name, i)
+			if !(i == equalNumber-1 && j == len(g.OutputVars)-1) {
+				tbStr += " ||\n"
+			} else {
+				tbStr += "\n"
+			}
 		}
 	}
+
+	tbStr += `        ) begin
+            $fwrite(fout, "NO\n");
+        end else begin
+            $fwrite(fout, "YES\n");
+        end
+`
+
 	tbStr += `
     end
+
     $fclose(fin);
+    $fclose(fout);
     $display("Test completed.");
     $finish;
 end
