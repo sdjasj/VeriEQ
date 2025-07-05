@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// Expression 表示Verilog表达式的基本接口
 type Expression interface {
 	GenerateString() string
 	EquivalentTrans() Expression
@@ -106,8 +105,8 @@ type ConcatenationExpression struct {
 }
 
 type ReplicationExpression struct {
-	Count      Expression // 重复次数
-	Expression Expression // 要重复的表达式
+	Count      Expression
+	Expression Expression
 
 	ctxWidth    int
 	ctxSigned   bool
@@ -192,7 +191,6 @@ func (e *AssignExpression) GenerateString() string {
 		e.Right.GenerateString())
 }
 
-// 实现各种表达式的GenerateString方法
 func (b *BinaryExpression) GenerateString() string {
 	//if b.Operator == "/" || b.Operator == "%" {
 	//	leftVar := fmt.Sprintf("({1'b1, %s})", b.Right.GenerateString())
@@ -232,7 +230,6 @@ func (r *ReplicationExpression) GenerateString() string {
 	return fmt.Sprintf("{%s{%s}}", r.Count.GenerateString(), r.Expression.GenerateString())
 }
 
-// isZero 检测表达式是否等价于常量 0
 func isZero(e Expression) bool {
 	if n, ok := e.(*NumberExpression); ok {
 		return n.Value.Value == 0
@@ -240,7 +237,6 @@ func isZero(e Expression) bool {
 	return false
 }
 
-// isOne 检测表达式是否等价于常量 1
 func isOne(e Expression) bool {
 	if n, ok := e.(*NumberExpression); ok {
 		return n.Value.Value == 1
@@ -248,7 +244,6 @@ func isOne(e Expression) bool {
 	return false
 }
 
-// newZero 根据宽度和符号性构造一个 0
 func newZero(width int, signed bool) Expression {
 	cn := ConstNumber{
 		Value:      0,
@@ -264,7 +259,6 @@ func newZero(width int, signed bool) Expression {
 		realSigned:  signed}
 }
 
-// maxWidth 取两个子表达式中最大的位宽
 func maxWidth(a, b Expression) int {
 	wa := a.GetRealBitWidth()
 	wb := b.GetRealBitWidth()
@@ -288,14 +282,10 @@ func (b *BinaryExpression) clone(left, right Expression, op string) *BinaryExpre
 	}
 }
 
-// --- BinaryExpression 等价变换 ------------------------------------------------
-
 func (b *BinaryExpression) EquivalentTrans() Expression {
-	// 1) 先对孩子结点做等价变换
 	left := b.Left.EquivalentTrans()
 	right := b.Right.EquivalentTrans()
 
-	// 2) A 类：交换律（A1–A5）
 	switch b.Operator {
 	case "+", "*", "&", "|", "^":
 		if rand.Float64() < 0.5 {
@@ -303,7 +293,6 @@ func (b *BinaryExpression) EquivalentTrans() Expression {
 		}
 	}
 
-	// 3) A6：ge ↔ le
 	if b.Operator == ">=" {
 		return b.clone(right, left, "<=")
 	}
@@ -311,13 +300,12 @@ func (b *BinaryExpression) EquivalentTrans() Expression {
 		return b.clone(right, left, ">=")
 	}
 
-	// B1: shr (>>)
 	if b.Operator == ">>" {
 		if n, ok := right.(*NumberExpression); ok && n.Value.Value >= uint64(left.GetRealBitWidth()) {
 			return newZero(left.GetRealBitWidth(), left.GetSignedness())
 		}
 	}
-	// B2: ashr (>>>)，仅当 E 为无符号时
+
 	if b.Operator == ">>>" {
 		if n, ok := right.(*NumberExpression); ok &&
 			n.Value.Value >= (uint64(left.GetRealBitWidth())) &&
@@ -328,20 +316,19 @@ func (b *BinaryExpression) EquivalentTrans() Expression {
 			return newZero(left.GetRealBitWidth(), false)
 		}
 	}
-	// B3: shl (<<)
+
 	if b.Operator == "<<" {
 		if n, ok := right.(*NumberExpression); ok && n.Value.Value >= uint64(left.GetRealBitWidth()) {
 			return newZero(left.GetRealBitWidth(), left.GetSignedness())
 		}
 	}
-	// B4: lshl (<<<)
+
 	if b.Operator == "<<<" {
 		if n, ok := right.(*NumberExpression); ok && n.Value.Value >= uint64(left.GetRealBitWidth()) {
 			return newZero(left.GetRealBitWidth(), left.GetSignedness())
 		}
 	}
 
-	// 4) B5–B7：幺元/零元简化
 	switch b.Operator {
 	case "+":
 		if isZero(right) && right.GetBitWidth() == left.GetBitWidth() &&
@@ -361,7 +348,7 @@ func (b *BinaryExpression) EquivalentTrans() Expression {
 			left.GetSignedness() == right.GetSignedness() {
 			return right
 		}
-		// 乘以 0 → 0
+
 		if isZero(left) || isZero(right) {
 			w := maxWidth(left, right)
 			return newZero(w, left.GetRealSignedness() && right.GetRealSignedness())
@@ -372,18 +359,14 @@ func (b *BinaryExpression) EquivalentTrans() Expression {
 			return left
 		}
 	case "&":
-		// B10: E & (~E) → 0
 		if u, ok := right.(*UnaryExpression); ok && u.Operator == "~" && u.Operand.GenerateString() == left.GenerateString() {
 			w := left.GetRealBitWidth()
 			return newZero(w, left.GetRealSignedness())
 		}
 	}
 
-	// 5) 默认情况：构造一个新的节点，保留原操作符
 	return b
 }
-
-// --- UnaryExpression 等价变换 -------------------------------------------------
 
 func (u *UnaryExpression) EquivalentTrans() Expression {
 	if rand.Float64() > 0.5 {
@@ -392,21 +375,15 @@ func (u *UnaryExpression) EquivalentTrans() Expression {
 	return u
 }
 
-// --- NumberExpression 等价变换 -----------------------------------------------
-
 func (n *NumberExpression) EquivalentTrans() Expression {
 	// 常数本身不拆分，直接返回
 	return n
 }
 
-// --- VariableExpression 等价变换 --------------------------------------------
-
 func (v *VariableExpression) EquivalentTrans() Expression {
 	// 变量子范围也只是返回自己
 	return v
 }
-
-// --- TernaryExpression 等价变换 ---------------------------------------------
 
 func (t *TernaryExpression) EquivalentTrans() Expression {
 	if rand.Float64() > 0.5 {
@@ -418,11 +395,9 @@ func (t *TernaryExpression) EquivalentTrans() Expression {
 	if rand.Float64() > 0.5 {
 		t.FalseExpr = t.FalseExpr.EquivalentTrans()
 	}
-	// 可以在此添加三元式的等价规则（如条件恒真/恒假消除）
+
 	return t
 }
-
-// --- ConcatenationExpression 等价变换 ---------------------------------------
 
 func (c *ConcatenationExpression) EquivalentTrans() Expression {
 	for i, e := range c.Expressions {
@@ -433,8 +408,6 @@ func (c *ConcatenationExpression) EquivalentTrans() Expression {
 	return c
 }
 
-// --- ReplicationExpression 等价变换 -----------------------------------------
-
 func (r *ReplicationExpression) EquivalentTrans() Expression {
 	if rand.Float64() > 0.5 {
 		r.Expression = r.Expression.EquivalentTrans()
@@ -443,10 +416,8 @@ func (r *ReplicationExpression) EquivalentTrans() Expression {
 	return r
 }
 
-// --- AssignExpression 等价变换 ---------------------------------------------
-
 func (e *AssignExpression) EquivalentTrans() Expression {
-	// 只对右侧表达式做等价变换
+
 	right := e.Right.EquivalentTrans()
 	return &AssignExpression{
 		Operand1:  e.Operand1,
@@ -501,7 +472,6 @@ func (e *VariableExpression) GetSignedness() bool {
 	return e.ctxSigned
 }
 
-// BinaryExpression 的位宽和符号性实现
 func (b *BinaryExpression) GetBitWidth() int {
 	if b.isCtxSet {
 		return b.ctxWidth
@@ -509,7 +479,7 @@ func (b *BinaryExpression) GetBitWidth() int {
 	b.isCtxSet = true
 	switch b.Operator {
 	case "+", "-", "*", "/", "%", "&", "|", "^", "^~", "~^":
-		// 取左右操作数位宽的最大值
+
 		leftWidth := b.Left.GetBitWidth()
 		rightWidth := b.Right.GetBitWidth()
 		if leftWidth > rightWidth {
@@ -519,19 +489,18 @@ func (b *BinaryExpression) GetBitWidth() int {
 		}
 		return b.ctxWidth
 	case "===", "!==", "==", "!=", ">", ">=", "<", "<=":
-		// 比较运算符结果为1位
 		b.ctxWidth = 1
 		return 1
 	case "&&", "||":
-		// 逻辑运算符结果为1位
+
 		b.ctxWidth = 1
 		return 1
 	case ">>", "<<", "**", ">>>", "<<<":
-		// 移位运算符结果位宽与左操作数相同
+
 		b.ctxWidth = b.Left.GetBitWidth()
 		return b.ctxWidth
 	default:
-		// 默认取左操作数位宽
+
 		b.ctxWidth = b.Left.GetBitWidth()
 		return b.ctxWidth
 	}
@@ -544,17 +513,16 @@ func (b *BinaryExpression) GetSignedness() bool {
 	b.isSignedSet = true
 	switch b.Operator {
 	case "===", "!==", "==", "!=", ">", ">=", "<", "<=", "&&", "||":
-		// 比较和逻辑运算符结果总是无符号
+
 		b.ctxSigned = false
 		return false
 	default:
-		// 其他运算符：如果任一操作数是无符号的，结果就是无符号的
+
 		b.ctxSigned = b.Left.GetSignedness() && b.Right.GetSignedness()
 		return b.ctxSigned
 	}
 }
 
-// UnaryExpression 的位宽和符号性实现
 func (u *UnaryExpression) GetBitWidth() int {
 	if u.isCtxSet {
 		return u.ctxWidth
@@ -562,11 +530,11 @@ func (u *UnaryExpression) GetBitWidth() int {
 	u.isCtxSet = true
 	switch u.Operator {
 	case "&", "~&", "|", "~|", "^", "~^", "^~", "!":
-		// 归约运算符结果为1位
+
 		u.ctxWidth = 1
 		return 1
 	default:
-		// 其他一元运算符结果位宽与操作数相同
+
 		u.ctxWidth = u.Operand.GetBitWidth()
 		return u.ctxWidth
 	}
@@ -579,19 +547,18 @@ func (u *UnaryExpression) GetSignedness() bool {
 	u.isSignedSet = true
 	switch u.Operator {
 	case "&", "~&", "|", "~|", "^", "~^", "^~", "!":
-		// 归约运算符结果总是无符号
+
 		u.ctxSigned = false
 		return false
 	default:
 		u.ctxSigned = u.Operand.GetSignedness()
-		// 其他一元运算符保持操作数的符号性
+
 		return u.ctxSigned
 	}
 }
 
-// TernaryExpression 的位宽和符号性实现
 func (t *TernaryExpression) GetBitWidth() int {
-	// 取真值和假值表达式的最大位宽
+
 	if t.isCtxSet {
 		return t.ctxWidth
 	}
@@ -607,7 +574,7 @@ func (t *TernaryExpression) GetBitWidth() int {
 }
 
 func (t *TernaryExpression) GetSignedness() bool {
-	// 如果任一操作数是无符号的，结果就是无符号的
+
 	if t.isSignedSet {
 		return t.ctxSigned
 	}
@@ -616,9 +583,8 @@ func (t *TernaryExpression) GetSignedness() bool {
 	return t.ctxSigned
 }
 
-// ConcatenationExpression 的位宽和符号性实现
 func (c *ConcatenationExpression) GetBitWidth() int {
-	// 所有操作数位宽之和
+
 	if c.isCtxSet {
 		return c.ctxWidth
 	}
@@ -636,13 +602,12 @@ func (c *ConcatenationExpression) GetSignedness() bool {
 	return false
 }
 
-// ReplicationExpression 的位宽和符号性实现
 func (r *ReplicationExpression) GetBitWidth() int {
 	if r.isCtxSet {
 		return r.ctxWidth
 	}
 	r.isCtxSet = true
-	// 重复次数 * 表达式的位宽
+
 	count := r.Count.(*NumberExpression).Value.Value
 	exprWidth := r.Expression.GetBitWidth()
 	r.ctxWidth = int(count) * exprWidth
@@ -654,7 +619,6 @@ func (r *ReplicationExpression) GetSignedness() bool {
 	return false
 }
 
-// AssignExpression 的位宽和符号性实现
 func (e *AssignExpression) GetBitWidth() int {
 	r := e.Right.GetBitWidth()
 	l := 1
@@ -708,12 +672,12 @@ func (u *UnaryExpression) PropagateType(width int, signed bool) {
 	u.realSigned = signed
 	switch u.Operator {
 	case "&", "~&", "|", "~|", "^", "~^", "^~", "!":
-		// 归约运算符结果为1位
+
 		u.realWidth = 1
 		u.realSigned = false
 		u.Operand.PropagateType(u.Operand.GetBitWidth(), u.Operand.GetSignedness())
 	default:
-		// 其他一元运算符结果位宽与操作数相同
+
 		u.Operand.PropagateType(width, signed)
 	}
 }

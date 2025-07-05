@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"goFuzzer/CodeGenerator"
 	"io"
@@ -33,14 +34,13 @@ func printDirTree(dir string) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("打印目录树失败: %v\n", err)
+		fmt.Printf("%v\n", err)
 	}
 }
 
 func (f *Fuzzer) Init() {
 	baseTime := strconv.FormatInt(f.StartTime, 10)
 	curDir, _ := os.Getwd()
-	// 日志目录
 	logDir := curDir + "/" + LOGDIR + baseTime + "/"
 	f.LogDir = logDir
 	if _, err := os.Stat(logDir); os.IsNotExist(err) {
@@ -50,7 +50,6 @@ func (f *Fuzzer) Init() {
 		}
 	}
 
-	// 中间文件目录
 	tmpDir := curDir + "/" + TMPDIR + baseTime + "/"
 	f.TmpDir = tmpDir
 	if _, err := os.Stat(tmpDir); os.IsNotExist(err) {
@@ -60,7 +59,6 @@ func (f *Fuzzer) Init() {
 		}
 	}
 
-	// 崩溃日志目录
 	crashDir := curDir + "/" + CRASHDIR + baseTime + "/"
 	f.CrashDir = crashDir
 	if _, err := os.Stat(crashDir); os.IsNotExist(err) {
@@ -105,7 +103,6 @@ func (f *Fuzzer) Init() {
 }
 
 func (f *Fuzzer) Fuzz() {
-	// 生成 Verilog 相关
 	generator := CodeGenerator.NewExpressionGenerator()
 	curMillis := time.Now().UnixMilli()
 	curTimeStr := strconv.FormatInt(curMillis, 10)
@@ -123,26 +120,22 @@ func (f *Fuzzer) Fuzz() {
 		return
 	}
 
-	// 生成文件路径
 	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
 	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeModule()), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
+		fmt.Println(err)
 		return
 	}
 
-	// 写 tb.v
 	tbData := generator.GenerateTb()
 	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
-		fmt.Println("写 tb.v 出错:", err)
+		fmt.Println(err)
 		return
 	}
 
 	inputData := generator.GenerateInputFile()
 
-	// 运行 Verilator 编译
 	verilatorPath := "/root/hardware-test/verilator/verilator/bin/verilator"
 	verilatorOutputDir := filepath.Join(realSubDir, "obj_dir")
 	verilatorLogFileName := filepath.Join(realSubDir, GetRandomFileName("verilator", ".log", ""))
@@ -172,10 +165,9 @@ func (f *Fuzzer) Fuzz() {
 		return
 	}
 
-	// 运行 Verilator 模型
 	testbenchInputPath := filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写 testbench 输入出错:", err)
+		fmt.Println(err)
 		return
 	}
 	cmd = exec.Command("./Vtest")
@@ -190,7 +182,7 @@ func (f *Fuzzer) Fuzz() {
 
 	verilatorData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Printf("读取verilator输出出错, %v\n", err)
+		fmt.Printf(" %v\n", err)
 		handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
 	}
 
@@ -204,10 +196,9 @@ func (f *Fuzzer) Fuzz() {
 	//}
 	//printDirTree(realSubDir)
 	//_ = os.Remove(generator.TestBenchOutputFileName)
-	// 运行 Icarus Verilog
 	iverilogDir := filepath.Join(realSubDir, "iverilog")
 	if err := os.MkdirAll(iverilogDir, 0755); err != nil {
-		fmt.Println("创建 iverilog 目录失败:", err)
+		fmt.Println(err)
 		return
 	}
 
@@ -220,7 +211,7 @@ func (f *Fuzzer) Fuzz() {
 	iverilogLogFileName := filepath.Join(realSubDir, GetRandomFileName("iverilog", ".log", ""))
 	logFile, err = os.Create(iverilogLogFileName)
 	if err != nil {
-		fmt.Println("创建 iverilog 日志失败:", err)
+		fmt.Println(err)
 		return
 	}
 
@@ -233,10 +224,9 @@ func (f *Fuzzer) Fuzz() {
 		return
 	}
 
-	// 执行 Icarus 仿真
 	testbenchInputPath = filepath.Join(iverilogDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写入 testbench 输入文件失败:", err)
+		fmt.Println(err)
 		return
 	}
 	cmd = exec.Command("./a.out")
@@ -252,7 +242,7 @@ func (f *Fuzzer) Fuzz() {
 
 	iverilogData, err := os.ReadFile(filepath.Join(iverilogDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Println("读取iverilog输出出错:", err)
+		fmt.Println(err)
 		handleFailure(f.CrashDir, realSubDir, iverilogLogFileName, err.Error())
 	}
 
@@ -263,20 +253,17 @@ func (f *Fuzzer) Fuzz() {
 
 	//printDirTree(realSubDir)
 	//_ = os.Remove(generator.TestBenchOutputFileName)
-	// 1. 创建 cxxrtl 工作目录
 	cxxrtlDir := filepath.Join(realSubDir, "cxxrtl")
 	if err := os.MkdirAll(cxxrtlDir, 0o755); err != nil {
-		fmt.Println("创建 cxxrtl 目录失败:", err)
+		fmt.Println(err)
 		return
 	}
 	CXXTestBenchData := generator.GenerateCXXRTLTestBench()
 	CXXTestBenchFile := filepath.Join(cxxrtlDir, "main.cpp")
 	if err := os.WriteFile(CXXTestBenchFile, []byte(CXXTestBenchData), 0644); err != nil {
-		fmt.Println("创建 cxxrtl 激励文件失败: ", err)
+		fmt.Println(err)
 	}
 
-	// 2. 用 Yosys 把设计转换成 CXXRTL 的 main.cpp
-	//    tb.v 依旧作为顶层；若顶层名称不是 tb，自行替换 "-top tb"
 	yosysCmd := exec.Command(
 		"yosys",
 		"-p",
@@ -290,7 +277,7 @@ func (f *Fuzzer) Fuzz() {
 
 	logFile, err = os.Create(cxxrtlLog)
 	if err != nil {
-		fmt.Println("创建 cxxrtl 日志失败:", err)
+		fmt.Println(err)
 		return
 	}
 	defer logFile.Close()
@@ -300,16 +287,13 @@ func (f *Fuzzer) Fuzz() {
 	yosysCmd.Stderr = &cxxrtlStderr
 
 	if err := yosysCmd.Run(); err != nil {
-		fmt.Println("cxxrtl生成失败")
 		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
 		return
 	}
 
-	// 3. 编译 CXXRTL 生成的 main.cpp
 	compileCmd := "clang++ -w -g -O3 -std=c++14 " +
 		"-I $(yosys-config --datdir)/include/backends/cxxrtl/runtime " +
 		"main.cpp -o cxxsim"
-	// 需要 shell 来展开 $(yosys-config ...)
 	build := exec.Command("bash", "-c", compileCmd)
 	build.Dir = cxxrtlDir
 	build.Stdout = logFile
@@ -317,19 +301,15 @@ func (f *Fuzzer) Fuzz() {
 	cxxrtlStderr.Reset()
 
 	if err := build.Run(); err != nil {
-		fmt.Println("cxxrtl编译失败")
 		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
 		return
 	}
 
-	// 4. 把 testbench 输入文件复制到 cxxrtl 目录
 	tbInputPath := filepath.Join(cxxrtlDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(tbInputPath, []byte(inputData), 0o644); err != nil {
-		fmt.Println("写入 CXXRTL testbench 输入失败:", err)
 		return
 	}
 
-	// 5. 运行 CXXRTL 仿真
 	sim := exec.Command("./cxxsim")
 	sim.Dir = cxxrtlDir
 	sim.Stdout = logFile
@@ -337,22 +317,18 @@ func (f *Fuzzer) Fuzz() {
 	cxxrtlStderr.Reset()
 
 	if err := sim.Run(); err != nil {
-		fmt.Println("cxxrtl运行失败")
 		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
 		return
 	}
 
-	// 6. 读取 CXXRTL 输出
 	cxxrtlData, err := os.ReadFile(filepath.Join(cxxrtlDir, "output.txt"))
 	if err != nil {
-		fmt.Println("读取 CXXRTL 输出出错:", err)
 		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, err.Error())
 	}
 
 	logFile.Close()
 	//printDirTree(realSubDir)
 	//_ = os.Remove(generator.TestBenchOutputFileName)
-	/* ---------- 三方结果一致性比较 ---------- */
 
 	cxxrtlOut := filepath.Join(realSubDir, "cxxrtl_output.txt")
 	_ = os.WriteFile(cxxrtlOut, cxxrtlData, 0o644)
@@ -361,10 +337,9 @@ func (f *Fuzzer) Fuzz() {
 	equalVC := bytes.Equal(verilatorData, cxxrtlData)
 	equalIC := bytes.Equal(iverilogData, cxxrtlData)
 
-	if equalVI && equalVC && equalIC { // 三个完全一致
-		fmt.Println(curTimeStr + " 三个结果完全相同")
+	if equalVI && equalVC && equalIC {
 		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
+			fmt.Printf("%v\n", err)
 		}
 		return
 	}
@@ -378,12 +353,8 @@ func (f *Fuzzer) Fuzz() {
 	if !equalIC {
 		diffStr += "iverilog is not equal with cxxrtl\n"
 	}
-	// 任意不一致即判定 bug
 	fmt.Println(diffStr + "bug occur!!!!!!!!!!!!!!!!!")
 
-	// ⬇️ 把三个仿真输出写到文件留档
-
-	// 生成 diff.txt（以 Verilator 为基准）
 	diffContent := diffStr + "\n==== Verilator vs CXXRTL Diff ====\n" + diffLines(verilatorData, cxxrtlData) +
 		"\n==== Verilator vs Icarus Diff ====\n" +
 		diffLines(verilatorData, iverilogData) +
@@ -392,14 +363,12 @@ func (f *Fuzzer) Fuzz() {
 	diffFile := filepath.Join(realSubDir, "diff.txt")
 	_ = os.WriteFile(diffFile, []byte(diffContent), 0o644)
 
-	// 标记 panic
 	_ = os.WriteFile(
 		filepath.Join(f.TmpDir, "panic.log"),
 		[]byte("bug occur!!!!!!!!!"),
 		0o644,
 	)
 
-	// 把现场复制到 crash 目录
 	uniqueCrashDir := filepath.Join(
 		f.CrashDir,
 		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
@@ -409,7 +378,6 @@ func (f *Fuzzer) Fuzz() {
 }
 
 func (f *Fuzzer) TestYosysOptUsingVerilator() {
-	// 生成 Verilog 相关
 	generator := CodeGenerator.NewExpressionGenerator()
 	curMillis := time.Now().UnixMilli()
 	curTimeStr := strconv.FormatInt(curMillis, 10)
@@ -427,18 +395,15 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 		return
 	}
 
-	// 生成文件路径
 	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
 	OptFileName := filepath.Join(realSubDir, "opt.v")
 	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeModule()), 0644); err != nil {
 		fmt.Println("写 test.v 出错:", err)
 		return
 	}
 
-	// 写 tb.v
 	tbData := generator.GenerateTb()
 	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
 		fmt.Println("写 tb.v 出错:", err)
@@ -452,7 +417,6 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 	yosysOptFile := filepath.Join(realSubDir, "yosys_opt.log")
 	logFile, err := os.Create(yosysOptFile)
 	if err != nil {
-		fmt.Println("创建 yosys_opt 日志失败:", err)
 		return
 	}
 	cmd := exec.Command("yosys", "-p", "read_verilog test.v; opt; proc; write_verilog opt.v")
@@ -466,20 +430,16 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 
 	optFileContent, err := os.ReadFile(OptFileName)
 	if err != nil {
-		fmt.Println("读取 opt.v 出错:", err)
 		return
 	}
 	newContent := []byte("`timescale 1ns/1ps\n")
 	newContent = append(newContent, optFileContent...)
 	if err := os.WriteFile(OptFileName, newContent, 0644); err != nil {
-		fmt.Println("写回 opt.v 出错:", err)
 		return
 	}
 
 	//printDirTree(realSubDir)
 	//_ = os.Remove(generator.TestBenchOutputFileName)
-	// 运行 Icarus Verilog
-	// 运行 Verilator 编译
 	verilatorPath := "/root/hardware-test/verilator/verilator/bin/verilator"
 	verilatorOutputDir := filepath.Join(realSubDir, "obj_dir")
 	verilatorLogFileName := filepath.Join(realSubDir, GetRandomFileName("verilator", ".log", ""))
@@ -509,7 +469,6 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 		return
 	}
 
-	// 运行 Verilator 模型
 	testbenchInputPath := filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
 		fmt.Println("写 testbench 输入出错:", err)
@@ -527,7 +486,6 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 
 	verilatorData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Printf("读取verilator输出出错, %v\n", err)
 		handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
 	}
 
@@ -568,7 +526,6 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 		return
 	}
 
-	// 运行 Verilator 模型
 	testbenchInputPath = filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
 		fmt.Println("写 testbench 输入出错:", err)
@@ -586,7 +543,6 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 
 	verilatorOptData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Printf("读取verilator输出出错, %v\n", err)
 		handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
 	}
 
@@ -597,31 +553,24 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 
 	equalOpt := bytes.Equal(verilatorData, verilatorOptData)
 
-	if equalOpt { // 三个完全一致
-		fmt.Println(curTimeStr + " 结果完全相同")
+	if equalOpt {
 		if err := os.RemoveAll(realSubDir); err != nil {
 			fmt.Printf("删除临时测试目录失败: %v\n", err)
 		}
 		return
 	}
-	// 任意不一致即判定 bug
 	fmt.Println("bug occur!!!!!!!!!!!!!!!!!")
 
-	// ⬇️ 把三个仿真输出写到文件留档
-
-	// 生成 diff.txt（以 Verilator 为基准）
 	diffContent := "\n==== NoOpt vs Opt Diff ====\n" + diffLines(verilatorData, verilatorOptData)
 	diffFile := filepath.Join(realSubDir, "diff.txt")
 	_ = os.WriteFile(diffFile, []byte(diffContent), 0o644)
 
-	// 标记 panic
 	_ = os.WriteFile(
 		filepath.Join(f.TmpDir, "panic.log"),
 		[]byte("bug occur!!!!!!!!!"),
 		0o644,
 	)
 
-	// 把现场复制到 crash 目录
 	uniqueCrashDir := filepath.Join(
 		f.CrashDir,
 		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
@@ -630,7 +579,6 @@ func (f *Fuzzer) TestYosysOptUsingVerilator() {
 }
 
 func (f *Fuzzer) TestYosysOpt() {
-	// 生成 Verilog 相关
 	generator := CodeGenerator.NewExpressionGenerator()
 	curMillis := time.Now().UnixMilli()
 	curTimeStr := strconv.FormatInt(curMillis, 10)
@@ -648,21 +596,16 @@ func (f *Fuzzer) TestYosysOpt() {
 		return
 	}
 
-	// 生成文件路径
 	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
 	OptFileName := filepath.Join(realSubDir, "opt.v")
 	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeModule()), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
 		return
 	}
 
-	// 写 tb.v
 	tbData := generator.GenerateTb()
 	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
-		fmt.Println("写 tb.v 出错:", err)
 		return
 	}
 
@@ -671,7 +614,6 @@ func (f *Fuzzer) TestYosysOpt() {
 	yosysOptFile := filepath.Join(realSubDir, "yosys_opt.log")
 	logFile, err := os.Create(yosysOptFile)
 	if err != nil {
-		fmt.Println("创建 yosys_opt 日志失败:", err)
 		return
 	}
 	cmd := exec.Command("yosys", "-p", "read_verilog test.v; opt; proc; write_verilog opt.v")
@@ -685,10 +627,8 @@ func (f *Fuzzer) TestYosysOpt() {
 
 	//printDirTree(realSubDir)
 	//_ = os.Remove(generator.TestBenchOutputFileName)
-	// 运行 Icarus Verilog
 	iverilogDir := filepath.Join(realSubDir, "iverilog")
 	if err := os.MkdirAll(iverilogDir, 0755); err != nil {
-		fmt.Println("创建 iverilog 目录失败:", err)
 		return
 	}
 
@@ -701,7 +641,6 @@ func (f *Fuzzer) TestYosysOpt() {
 	iverilogLogFileName := filepath.Join(realSubDir, GetRandomFileName("iverilog", ".log", ""))
 	logFile, err = os.Create(iverilogLogFileName)
 	if err != nil {
-		fmt.Println("创建 iverilog 日志失败:", err)
 		return
 	}
 
@@ -714,10 +653,8 @@ func (f *Fuzzer) TestYosysOpt() {
 		return
 	}
 
-	// 执行 Icarus 仿真
 	testbenchInputPath := filepath.Join(iverilogDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写入 testbench 输入文件失败:", err)
 		return
 	}
 	cmd = exec.Command("./a.out")
@@ -733,7 +670,6 @@ func (f *Fuzzer) TestYosysOpt() {
 
 	iverilogData, err := os.ReadFile(filepath.Join(iverilogDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Println("读取iverilog输出出错:", err)
 		handleFailure(f.CrashDir, realSubDir, iverilogLogFileName, err.Error())
 	}
 
@@ -746,7 +682,6 @@ func (f *Fuzzer) TestYosysOpt() {
 
 	iverilogDir = filepath.Join(realSubDir, "iverilog_opt")
 	if err := os.MkdirAll(iverilogDir, 0755); err != nil {
-		fmt.Println("创建 iverilog_opt 目录失败:", err)
 		return
 	}
 
@@ -759,7 +694,6 @@ func (f *Fuzzer) TestYosysOpt() {
 	iverilogLogFileName = filepath.Join(realSubDir, GetRandomFileName("iverilog_opt_", ".log", ""))
 	logFile, err = os.Create(iverilogLogFileName)
 	if err != nil {
-		fmt.Println("创建 iverilog_opt 日志失败:", err)
 		return
 	}
 
@@ -772,10 +706,8 @@ func (f *Fuzzer) TestYosysOpt() {
 		return
 	}
 
-	// 执行 Icarus 仿真
 	testbenchInputPath = filepath.Join(iverilogDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写入 testbench 输入文件失败:", err)
 		return
 	}
 	cmd = exec.Command("./a.out")
@@ -791,7 +723,6 @@ func (f *Fuzzer) TestYosysOpt() {
 
 	iverilogOptData, err := os.ReadFile(filepath.Join(iverilogDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Println("读取iverilog_opt输出出错:", err)
 		handleFailure(f.CrashDir, realSubDir, iverilogLogFileName, err.Error())
 	}
 
@@ -802,31 +733,24 @@ func (f *Fuzzer) TestYosysOpt() {
 
 	equalOpt := bytes.Equal(iverilogOptData, iverilogData)
 
-	if equalOpt { // 三个完全一致
-		fmt.Println(curTimeStr + " 结果完全相同")
+	if equalOpt {
 		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
+			fmt.Printf("%v\n", err)
 		}
 		return
 	}
-	// 任意不一致即判定 bug
 	fmt.Println("bug occur!!!!!!!!!!!!!!!!!")
 
-	// ⬇️ 把三个仿真输出写到文件留档
-
-	// 生成 diff.txt（以 Verilator 为基准）
 	diffContent := "\n==== NoOpt vs Opt Diff ====\n" + diffLines(iverilogData, iverilogOptData)
 	diffFile := filepath.Join(realSubDir, "diff.txt")
 	_ = os.WriteFile(diffFile, []byte(diffContent), 0o644)
 
-	// 标记 panic
 	_ = os.WriteFile(
 		filepath.Join(f.TmpDir, "panic.log"),
 		[]byte("bug occur!!!!!!!!!"),
 		0o644,
 	)
 
-	// 把现场复制到 crash 目录
 	uniqueCrashDir := filepath.Join(
 		f.CrashDir,
 		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
@@ -904,7 +828,7 @@ func copyDir(src string, dst string) error {
 
 func processCrash(logFile string, stderr string) {
 	if checkSanitizerErrorFromStderr(stderr) {
-		fmt.Printf("%s 失败且检测到 ASan 错误，保留日志和 Verilog 文件。\n")
+		return
 	}
 	appendToLogFile(logFile, stderr)
 }
@@ -913,17 +837,15 @@ func handleFailure(crashDir, realSubDir, logFile string, stderr string) {
 	if logFile != "" {
 		processCrash(logFile, stderr)
 	}
-
-	// 把测试现场复制到 crash 子目录
 	curTimeStr := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	crashSubdir := filepath.Join(crashDir, "crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""))
 	if err := copyDir(realSubDir, crashSubdir); err != nil {
-		fmt.Printf("复制出错目录失败：%v\n", err)
+		fmt.Printf("%v\n", err)
 	}
 
 	// 删除测试目录
 	if err := os.RemoveAll(realSubDir); err != nil {
-		fmt.Printf("删除临时测试目录失败: %v\n", err)
+		fmt.Printf("%v\n", err)
 	}
 }
 
@@ -931,15 +853,14 @@ func handleFailure(crashDir, realSubDir, logFile string, stderr string) {
 func appendToLogFile(logFileName, stderrContent string) {
 	file, err := os.OpenFile(logFileName, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Printf("无法打开日志文件 %s 追加 sanitizer 错误: %v\n", logFileName, err)
 		return
 	}
 	defer file.Close()
 
 	// 追加 sanitizer 错误到日志文件
-	_, err = file.WriteString("\n==== Sanitizer 错误输出 ====\n" + stderrContent + "\n")
+	_, err = file.WriteString("\n==== Sanitizer====\n" + stderrContent + "\n")
 	if err != nil {
-		fmt.Printf("写入 sanitizer 错误到日志文件 %s 失败: %v\n", logFileName, err)
+		return
 	}
 }
 
@@ -966,16 +887,12 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-// 检查 stderr 是否包含 ASan 或 UBSan 相关的错误信息
 func checkSanitizerErrorFromStderr(stderr string) bool {
-	// ASan 和 UBSan 相关的常见错误关键词
 	sanitizerKeywords := []string{
-		// ASan 错误
 		"AddressSanitizer", "heap-buffer-overflow", "stack-buffer-overflow",
 		"use-after-free", "global-buffer-overflow", "double-free",
 		"invalid-pointer", "shadow memory",
 
-		// UBSan 错误
 		"UndefinedBehaviorSanitizer", "runtime error:", "signed integer overflow",
 		"shift exponent", "out of bounds", "alignment assumption", "integer divide by zero",
 		"invalid shift", "unreachable code", "type mismatch",
@@ -989,20 +906,48 @@ func checkSanitizerErrorFromStderr(stderr string) bool {
 	return false
 }
 
+const logo = `
+__     __        _       _____ ___  
+\ \   / /__ _ __(_)     | ____/ _ \ 
+ \ \ / / _ \ '__| |_____|  _|| | | |
+  \ V /  __/ |  | |_____| |__| |_| |
+   \_/ \___|_|  |_|     |_____\__\_\
+
+`
+
 func main() {
-	TestAllEquivalence()
+	//TestAllEquivalence()
+	fmt.Println(logo)
+	fuzzer := flag.String("fuzzer", "verilator", "Which fuzzer to run: iverilog | verilator | yosys | cxxrtl")
+	threads := flag.Int("threads", 10, "Number of threads")
+	count := flag.Int("count", 50, "Number of equivalent test cases")
+
+	flag.Parse()
+
+	RunSelectedFuzzer(*fuzzer, *count, *threads)
 }
 
-// TestSimpleCXXRTL 用固定电路验证 CXXRTL 流程能否正常工作。
-// 返回 nil 表示通过，返回 error 表示流程或结果不正确。
+func RunSelectedFuzzer(name string, count, threads int) {
+	switch name {
+	case "iverilog":
+		go EqualFuzzIverilog(threads, count)
+	case "verilator":
+		go EqualFuzzVerilator(threads, count)
+	case "yosys":
+		go EqualFuzzYosysOpt(threads, count)
+	case "cxxrtl":
+		go EqualFuzzCXXRTL(threads, count)
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown fuzzer: %s\n", name)
+		os.Exit(1)
+	}
+}
+
 func TestSimpleCXXRTL() error {
-	// 1. 创建临时目录并写入 Verilog 源文件
+
 	tmpDir, err := os.MkdirTemp("", "cxxrtl_simple_")
 	fmt.Println(tmpDir)
 	//defer os.RemoveAll(tmpDir)
-	if err != nil {
-		return fmt.Errorf("创建临时目录失败: %v", err)
-	}
 	generator := CodeGenerator.NewExpressionGenerator()
 	dut := generator.GenerateLoopFreeModule()
 	tb := generator.GenerateCXXRTLTestBench()
@@ -1021,7 +966,6 @@ func TestSimpleCXXRTL() error {
 		return err
 	}
 
-	// 2. 调 Yosys 生成 CXXRTL main.cpp
 	yosysCmd := exec.Command(
 		"yosys",
 		"-p", fmt.Sprintf(
@@ -1033,7 +977,6 @@ func TestSimpleCXXRTL() error {
 		return fmt.Errorf("Yosys 失败: %v\n%s", err, out)
 	}
 
-	// 3. 编译 main.cpp
 	buildCmd := `clang++ -w -g -O3 -std=c++14 ` +
 		`-I $(yosys-config --datdir)/include/backends/cxxrtl/runtime ` +
 		`main.cpp -o cxxsim`
@@ -1043,16 +986,14 @@ func TestSimpleCXXRTL() error {
 		return fmt.Errorf("clang++ 失败: %v\n%s", err, out)
 	}
 
-	// 4. 运行仿真
 	run := exec.Command("./cxxsim")
 	run.Dir = tmpDir
 	if out, err := run.CombinedOutput(); err != nil {
 		return fmt.Errorf("CXXRTL 运行失败: %v\n%s", err, out)
 	} else if len(out) != 0 {
-		// CXXRTL 默认没有 stdout；有输出也无妨
+
 	}
 
-	// 5. 读取并校验 out.txt
 	gotBytes, err := os.ReadFile(filepath.Join(tmpDir, "output.txt"))
 	if err != nil {
 		return fmt.Errorf("读取 output.txt 失败: %v", err)
@@ -1063,12 +1004,11 @@ func TestSimpleCXXRTL() error {
 }
 
 func TestEqualCXXRTL() error {
-	// 1. 创建临时目录并写入 Verilog 源文件
 	tmpDir, err := os.MkdirTemp("", "cxxrtl_equal_")
 	fmt.Println(tmpDir)
 	//defer os.RemoveAll(tmpDir)
 	if err != nil {
-		return fmt.Errorf("创建临时目录失败: %v", err)
+		return fmt.Errorf("%v", err)
 	}
 	equalNum := 5
 	generator := CodeGenerator.NewExpressionGenerator()
@@ -1089,12 +1029,11 @@ func TestEqualCXXRTL() error {
 		return err
 	}
 
-	// 2. 调 Yosys 生成 CXXRTL main.cpp
 	var wg sync.WaitGroup
-	errCh := make(chan error, equalNum) // 容量等于任务数，防止阻塞
+	errCh := make(chan error, equalNum)
 
 	for i := 0; i < equalNum; i++ {
-		i := i // 避免闭包捕获问题
+		i := i
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -1115,7 +1054,6 @@ func TestEqualCXXRTL() error {
 				return
 			}
 
-			// 读取 test%d.cpp 并删除末尾 5 行
 			data, err := os.ReadFile(outputPath)
 			if err != nil {
 				errCh <- fmt.Errorf("读取 %s 失败: %v", outputFile, err)
@@ -1136,7 +1074,6 @@ func TestEqualCXXRTL() error {
 	wg.Wait()
 	close(errCh)
 
-	// 统一处理错误
 	for err := range errCh {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -1144,7 +1081,6 @@ func TestEqualCXXRTL() error {
 		}
 	}
 
-	// 3. 编译 main.cpp
 	buildCmd := `clang++ -w -g -O3 -std=c++14 ` +
 		`-I $(yosys-config --datdir)/include/backends/cxxrtl/runtime ` +
 		`main.cpp -o cxxsim`
@@ -1154,16 +1090,13 @@ func TestEqualCXXRTL() error {
 		return fmt.Errorf("clang++ 失败: %v\n%s", err, out)
 	}
 
-	// 4. 运行仿真
 	run := exec.Command("./cxxsim")
 	run.Dir = tmpDir
 	if out, err := run.CombinedOutput(); err != nil {
 		return fmt.Errorf("CXXRTL 运行失败: %v\n%s", err, out)
 	} else if len(out) != 0 {
-		// CXXRTL 默认没有 stdout；有输出也无妨
 	}
 
-	// 5. 读取并校验 out.txt
 	gotBytes, err := os.ReadFile(filepath.Join(tmpDir, "output.txt"))
 	if err != nil {
 		return fmt.Errorf("读取 output.txt 失败: %v", err)
@@ -1190,17 +1123,14 @@ func TestExpressionGenerator() {
 }
 
 func saveCrashArtifacts(f *Fuzzer, logFileName, tmpFileName, reason string) {
-	// 移动日志文件到 crash 文件夹
 	crashLogPath := filepath.Join(f.CrashDir, filepath.Base(logFileName))
 	errMoveLog := os.Rename(logFileName, crashLogPath)
 	if errMoveLog != nil {
-		fmt.Printf("移动日志文件到 crash 文件夹时出错: %v\n", errMoveLog)
+		fmt.Printf("%v\n", errMoveLog)
 	}
 
-	// 追加错误原因到日志
 	appendToLogFile(crashLogPath, "\n==== 崩溃原因 ====\n"+reason+"\n")
 
-	// 拷贝 tmp 文件
 	dstTmp := filepath.Join(f.CrashDir, filepath.Base(tmpFileName))
 	if errCopy := copyFile(tmpFileName, dstTmp); errCopy != nil {
 		fmt.Printf("拷贝临时文件到 crash 文件夹时出错: %v\n", errCopy)
@@ -1237,7 +1167,6 @@ func (f *Fuzzer) TestSynth() {
 			logFileName := f.LogDir + GetRandomFileName(command+"-", ".log", "")
 			realCmd := fmt.Sprintf("read_verilog %s; %s", tmpFileName, command)
 
-			// 设置2小时超时
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 			defer cancel()
 
@@ -1250,37 +1179,28 @@ func (f *Fuzzer) TestSynth() {
 
 			exitErr, isExitErr := err.(*exec.ExitError)
 
-			// 检查是否超时
 			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-				fmt.Printf("Yosys 命令超时，强制终止，保留日志和 Verilog 文件。\n")
-				reason := "Yosys 命令超时 (超过2小时)"
+				reason := "Yosys timeout"
 				saveCrashArtifacts(f, logFileName, tmpFileName, reason)
 				return
 			}
 
-			// 检查 OOM Kill (exit status 137)
 			if isExitErr && exitErr.ExitCode() == 137 {
-				fmt.Printf("Yosys 被 OOM Kill (退出码 137)，保留日志和 Verilog 文件。\n")
-				reason := "Yosys 进程被 OOM Kill (退出码 137)"
+				reason := "Yosys OOM Kill"
 				saveCrashArtifacts(f, logFileName, tmpFileName, reason)
 				return
 			}
 
-			// 非超时且非 OOM 的情况
 			if err != nil {
 				sanitizerError := checkSanitizerErrorFromStderr(stderrBuffer.String())
 
 				if sanitizerError {
 					appendToLogFile(logFileName, stderrBuffer.String())
-					fmt.Printf("Yosys 失败且检测到 ASan/UBSan 错误，保留日志和 Verilog 文件。\n")
-					reason := "检测到 Sanitizer 错误 (ASan/UBSan)"
+					reason := "Sanitizer (ASan/UBSan)"
 					saveCrashArtifacts(f, logFileName, tmpFileName, reason)
-				} else {
-					fmt.Println("Yosys 失败，但未检测到 ASan/UBSan 相关错误")
 				}
 
 			} else {
-				fmt.Println("Yosys 命令执行成功，删除日志文件。")
 				os.Remove(logFileName)
 			}
 		}(command)
@@ -1387,26 +1307,21 @@ func TestEqualExpressionGenerator() {
 		panic(err)
 	}
 
-	// 生成多模块 testbench，自动实例化 top_eq0 ~ top_eqN
 	tb := g.GenerateEquivalenceCheckTb(equalNumber)
 	if err := os.WriteFile("tb.v", []byte(tb), 0644); err != nil {
 		panic(err)
 	}
 
-	// 生成输入激励
 	input := g.GenerateInputFile()
 	if err := os.WriteFile("input.txt", []byte(input), 0644); err != nil {
 		panic(err)
 	}
 
-	fmt.Println("✅ test.v, tb.v, input.txt 已生成，模块均已内联")
 }
 
 func (f *Fuzzer) TestYosysOptUsingVerilatorWithManyOptions() {
-	// 生成 Verilog 相关
 	generator := CodeGenerator.NewExpressionGenerator()
 	curMillis := time.Now().UnixMilli()
-	curTimeStr := strconv.FormatInt(curMillis, 10)
 
 	subDir := strconv.FormatInt(curMillis%1000, 10)
 	tmpSubDir := filepath.Join(f.TmpDir, subDir)
@@ -1421,21 +1336,16 @@ func (f *Fuzzer) TestYosysOptUsingVerilatorWithManyOptions() {
 		return
 	}
 
-	// 生成文件路径
 	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
 	OptFileName := filepath.Join(realSubDir, "opt.v")
 	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeModule()), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
 		return
 	}
 
-	// 写 tb.v
 	tbData := generator.GenerateTb()
 	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
-		fmt.Println("写 tb.v 出错:", err)
 		return
 	}
 
@@ -1487,7 +1397,7 @@ func (f *Fuzzer) TestYosysOptUsingVerilatorWithManyOptions() {
 		for j := i + 1; j < optionLength; j++ {
 			if !bytes.Equal(verilatorOutput[i], verilatorOutput[j]) {
 				inconsistentFound = true
-				fmt.Printf("不一致: [%s] vs [%s]\n", f.VerilatorOptions[i], f.VerilatorOptions[j])
+				fmt.Printf("[%s] vs [%s]\n", f.VerilatorOptions[i], f.VerilatorOptions[j])
 
 				diffContent := fmt.Sprintf(
 					"==== %s vs %s ====\n%s\n",
@@ -1502,16 +1412,12 @@ func (f *Fuzzer) TestYosysOptUsingVerilatorWithManyOptions() {
 	}
 
 	if inconsistentFound {
-		// 标记 panic
 		fmt.Println("bug occur!!!!!!!!!")
 
-		// 保存 crash 目录
 		handleFailure(f.CrashDir, realSubDir, "", "")
-		fmt.Println("发现差异，已保存至 crash 目录")
 	} else {
-		fmt.Println(curTimeStr + " 所有 Verilator 优化选项结果一致")
 		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
+			fmt.Printf("%v\n", err)
 		}
 	}
 
@@ -1539,22 +1445,18 @@ func (f *Fuzzer) TestEqualModulesCXXRTL(equalNumber int) {
 	tb := generator.GenerateCXXRTLMultiModuleTestBench(equalNumber)
 
 	if err := os.WriteFile(tbFileName, []byte(tb), 0644); err != nil {
-		fmt.Println("写 main.cpp 出错:", err)
 		return
 	}
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
 		return
 	}
 
-	// 2. 调 Yosys 生成 CXXRTL main.cpp
 	var wg sync.WaitGroup
-	errCh := make(chan error, equalNumber) // 容量等于任务数，防止阻塞
+	errCh := make(chan error, equalNumber)
 
 	for i := 0; i < equalNumber; i++ {
-		i := i // 避免闭包捕获问题
+		i := i
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -1575,10 +1477,9 @@ func (f *Fuzzer) TestEqualModulesCXXRTL(equalNumber int) {
 				return
 			}
 
-			// 读取 test%d.cpp 并删除末尾 5 行
 			data, err := os.ReadFile(outputPath)
 			if err != nil {
-				errCh <- fmt.Errorf("读取 %s 失败: %v", outputFile, err)
+				errCh <- fmt.Errorf(" %s  %v", outputFile, err)
 				return
 			}
 			lines := strings.Split(string(data), "\n")
@@ -1587,7 +1488,7 @@ func (f *Fuzzer) TestEqualModulesCXXRTL(equalNumber int) {
 			}
 			newContent := strings.Join(lines, "\n")
 			if err := os.WriteFile(outputPath, []byte(newContent), 0644); err != nil {
-				errCh <- fmt.Errorf("写回 %s 失败: %v", outputFile, err)
+				errCh <- fmt.Errorf("%s %v", outputFile, err)
 			}
 		}(i)
 
@@ -1596,7 +1497,6 @@ func (f *Fuzzer) TestEqualModulesCXXRTL(equalNumber int) {
 	wg.Wait()
 	close(errCh)
 
-	// 统一处理错误
 	for err := range errCh {
 		if err != nil {
 			fmt.Println("Error:", err)
@@ -1613,7 +1513,7 @@ func (f *Fuzzer) TestEqualModulesCXXRTL(equalNumber int) {
 	}
 	if !strings.Contains(string(cxxrtlData), "NO") {
 		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
+			fmt.Printf("%v\n", err)
 		}
 		//fmt.Println("cxxrtl finish!!!")
 		return
@@ -1649,16 +1549,12 @@ func (f *Fuzzer) TestEqualModulesIcarus(equalNumber int) {
 	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
 	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
 		return
 	}
 
-	// 写 tb.v
 	tbData := generator.GenerateEquivalenceCheckTb(equalNumber)
 	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
-		fmt.Println("写 tb.v 出错:", err)
 		return
 	}
 
@@ -1671,7 +1567,7 @@ func (f *Fuzzer) TestEqualModulesIcarus(equalNumber int) {
 	}
 	if !strings.Contains(string(iverilogData), "NO") {
 		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
+			fmt.Printf(" %v\n", err)
 		}
 		//fmt.Println("iverilog finish!!!")
 		return
@@ -1707,16 +1603,12 @@ func (f *Fuzzer) TestEqualModulesVerilator(equalNumber int) {
 	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
 	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
 		return
 	}
 
-	// 写 tb.v
 	tbData := generator.GenerateEquivalenceCheckTb(equalNumber)
 	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
-		fmt.Println("写 tb.v 出错:", err)
 		return
 	}
 
@@ -1729,7 +1621,7 @@ func (f *Fuzzer) TestEqualModulesVerilator(equalNumber int) {
 	}
 	if !strings.Contains(string(verilatorData), "NO") {
 		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
+			fmt.Printf(" %v\n", err)
 		}
 		//fmt.Println("verilator finish!!!")
 		return
@@ -1765,16 +1657,12 @@ func (f *Fuzzer) TestEqualModulesYosysOpt(equalNumber int) {
 	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
 	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
 
-	// 写 test.v
 	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
 		return
 	}
 
-	// 写 tb.v
 	tbData := generator.GenerateEquivalenceCheckTb(equalNumber)
 	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
-		fmt.Println("写 tb.v 出错:", err)
 		return
 	}
 
@@ -1787,7 +1675,7 @@ func (f *Fuzzer) TestEqualModulesYosysOpt(equalNumber int) {
 	}
 	if !strings.Contains(string(preData), "NO") && !strings.Contains(string(optData), "NO") {
 		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
+			fmt.Printf("%v\n", err)
 		}
 		//fmt.Println("yosysOpt finish!!!")
 		return
@@ -1801,7 +1689,6 @@ func (f *Fuzzer) TestEqualModulesYosysOpt(equalNumber int) {
 }
 
 func RunVerilator(option string, inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
-	// 运行 Verilator 编译
 	verilatorPath := "/root/hardware-test/verilator/verilator/bin/verilator"
 	subDirName := "obj_dir"
 	safeOption := strings.ReplaceAll(option, "-", "_")
@@ -1846,10 +1733,8 @@ func RunVerilator(option string, inputData string, generator *CodeGenerator.Expr
 		return nil, err
 	}
 
-	// 运行 Verilator 模型
 	testbenchInputPath := filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写 testbench 输入出错:", err)
 		return nil, err
 	}
 	cmd = exec.Command("./Vtb_dut_module")
@@ -1865,7 +1750,6 @@ func RunVerilator(option string, inputData string, generator *CodeGenerator.Expr
 
 	verilatorData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Printf("读取verilator输出出错, %v\n", err)
 		//handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
 		processCrash(verilatorLogFileName, err.Error())
 	}
@@ -1905,10 +1789,8 @@ func (f *Fuzzer) RunVerilator(inputData string, generator *CodeGenerator.Express
 		return nil, err
 	}
 
-	// 运行 Verilator 模型
 	testbenchInputPath := filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写 testbench 输入出错:", err)
 		return nil, err
 	}
 	cmd = exec.Command("./Vtest")
@@ -1923,7 +1805,6 @@ func (f *Fuzzer) RunVerilator(inputData string, generator *CodeGenerator.Express
 
 	verilatorData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Printf("读取verilator输出出错, %v\n", err)
 		handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
 		return nil, err
 	}
@@ -1938,7 +1819,6 @@ func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.Ex
 
 	logFile, err := os.Create(yosysOptFile)
 	if err != nil {
-		fmt.Println("创建 yosys_opt 日志失败:", err)
 		return nil, nil, err
 	}
 	defer logFile.Close()
@@ -1953,7 +1833,6 @@ func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.Ex
 		return nil, nil, err
 	}
 
-	// 运行未优化版本
 	dataNoOpt, err := f.RunIVerilog(inputData, generator, realSubDir, tmpFileName, tbFileName)
 	if err != nil {
 		return nil, nil, err
@@ -1961,10 +1840,8 @@ func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.Ex
 	noOptOutPath := filepath.Join(realSubDir, "iverilog_output_noOpt.txt")
 	_ = os.WriteFile(noOptOutPath, dataNoOpt, 0o644)
 
-	// 运行优化后的版本
 	optIVerilogDir := filepath.Join(realSubDir, "iverilog_opt")
 	if err := os.MkdirAll(optIVerilogDir, 0755); err != nil {
-		fmt.Println("创建 iverilog_opt 目录失败:", err)
 		return dataNoOpt, nil, err
 	}
 
@@ -1977,7 +1854,6 @@ func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.Ex
 	optLogFile := filepath.Join(realSubDir, GetRandomFileName("iverilog_opt_", ".log", ""))
 	logFile, err = os.Create(optLogFile)
 	if err != nil {
-		fmt.Println("创建 iverilog_opt 日志失败:", err)
 		return dataNoOpt, nil, err
 	}
 	defer logFile.Close()
@@ -1993,7 +1869,6 @@ func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.Ex
 
 	testbenchInputPath := filepath.Join(optIVerilogDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写入 testbench 输入文件失败:", err)
 		return dataNoOpt, nil, err
 	}
 
@@ -2010,7 +1885,6 @@ func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.Ex
 
 	dataOpt, err := os.ReadFile(filepath.Join(optIVerilogDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Println("读取iverilog_opt输出出错:", err)
 		handleFailure(f.CrashDir, realSubDir, optLogFile, err.Error())
 		return dataNoOpt, nil, err
 	}
@@ -2023,7 +1897,6 @@ func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.Ex
 func (f *Fuzzer) RunIVerilog(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
 	iverilogDir := filepath.Join(realSubDir, "iverilog")
 	if err := os.MkdirAll(iverilogDir, 0755); err != nil {
-		fmt.Println("创建 iverilog 目录失败:", err)
 		return nil, err
 	}
 
@@ -2037,7 +1910,6 @@ func (f *Fuzzer) RunIVerilog(inputData string, generator *CodeGenerator.Expressi
 	logFile, err := os.Create(iverilogLogFileName)
 	defer logFile.Close()
 	if err != nil {
-		fmt.Println("创建 iverilog 日志失败:", err)
 		return nil, err
 	}
 	var stderrBuffer bytes.Buffer
@@ -2049,10 +1921,8 @@ func (f *Fuzzer) RunIVerilog(inputData string, generator *CodeGenerator.Expressi
 		return nil, err
 	}
 
-	// 执行 Icarus 仿真
 	testbenchInputPath := filepath.Join(iverilogDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写入 testbench 输入文件失败:", err)
 		return nil, err
 	}
 	cmd = exec.Command("./a.out")
@@ -2068,7 +1938,6 @@ func (f *Fuzzer) RunIVerilog(inputData string, generator *CodeGenerator.Expressi
 
 	iverilogData, err := os.ReadFile(filepath.Join(iverilogDir, generator.TestBenchOutputFileName))
 	if err != nil {
-		fmt.Println("读取iverilog输出出错:", err)
 		handleFailure(f.CrashDir, realSubDir, iverilogLogFileName, err.Error())
 		return nil, err
 	}
@@ -2081,24 +1950,20 @@ func (f *Fuzzer) RunIVerilog(inputData string, generator *CodeGenerator.Expressi
 func (f *Fuzzer) RunCXXRTL(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
 	//printDirTree(realSubDir)
 	//_ = os.Remove(generator.TestBenchOutputFileName)
-	// 1. 创建 cxxrtl 工作目录
 
 	cxxrtlLog := filepath.Join(realSubDir, GetRandomFileName("cxxrtl", ".log", ""))
 
 	logFile, err := os.Create(cxxrtlLog)
 	defer logFile.Close()
 	if err != nil {
-		fmt.Println("创建 cxxrtl 日志失败:", err)
 		return nil, err
 	}
 
 	var cxxrtlStderr bytes.Buffer
 
-	// 3. 编译 CXXRTL 生成的 main.cpp
 	compileCmd := "clang++ -w -g -O3 -std=c++14 " +
 		"-I $(yosys-config --datdir)/include/backends/cxxrtl/runtime " +
 		"main.cpp -o cxxsim"
-	// 需要 shell 来展开 $(yosys-config ...)
 	build := exec.Command("bash", "-c", compileCmd)
 	build.Dir = realSubDir
 	build.Stdout = logFile
@@ -2106,19 +1971,16 @@ func (f *Fuzzer) RunCXXRTL(inputData string, generator *CodeGenerator.Expression
 	cxxrtlStderr.Reset()
 
 	if err := build.Run(); err != nil {
-		fmt.Println("cxxrtl编译失败")
 		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
 		return nil, err
 	}
 
-	// 4. 把 testbench 输入文件复制到 cxxrtl 目录
 	tbInputPath := filepath.Join(realSubDir, generator.TestBenchInputFileName)
 	if err := os.WriteFile(tbInputPath, []byte(inputData), 0o644); err != nil {
 		fmt.Println("写入 CXXRTL testbench 输入失败:", err)
 		return nil, err
 	}
 
-	// 5. 运行 CXXRTL 仿真
 	sim := exec.Command("./cxxsim")
 	sim.Dir = realSubDir
 	sim.Stdout = logFile
@@ -2126,21 +1988,17 @@ func (f *Fuzzer) RunCXXRTL(inputData string, generator *CodeGenerator.Expression
 	cxxrtlStderr.Reset()
 
 	if err := sim.Run(); err != nil {
-		fmt.Println("cxxrtl运行失败")
 		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
 		return nil, err
 	}
 
-	// 6. 读取 CXXRTL 输出
 	cxxrtlData, err := os.ReadFile(filepath.Join(realSubDir, "output.txt"))
 	if err != nil {
-		fmt.Println("读取 CXXRTL 输出出错:", err)
 		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, err.Error())
 		return nil, err
 	}
 	//printDirTree(realSubDir)
 	//_ = os.Remove(generator.TestBenchOutputFileName)
-	/* ---------- 三方结果一致性比较 ---------- */
 
 	cxxrtlOut := filepath.Join(realSubDir, "cxxrtl_output.txt")
 	_ = os.WriteFile(cxxrtlOut, cxxrtlData, 0o644)
@@ -2152,7 +2010,6 @@ func (f *Fuzzer) RunYosysOpt(realSubDir, OptFileName string) error {
 	yosysOptFile := filepath.Join(realSubDir, "yosys_opt.log")
 	logFile, err := os.Create(yosysOptFile)
 	if err != nil {
-		fmt.Println("创建 yosys_opt 日志失败:", err)
 		return err
 	}
 	cmd := exec.Command("yosys", "-p", "read_verilog test.v; opt; proc; write_verilog opt.v")
@@ -2166,13 +2023,11 @@ func (f *Fuzzer) RunYosysOpt(realSubDir, OptFileName string) error {
 
 	optFileContent, err := os.ReadFile(OptFileName)
 	if err != nil {
-		fmt.Println("读取 opt.v 出错:", err)
 		return err
 	}
 	newContent := []byte("`timescale 1ns/1ps\n")
 	newContent = append(newContent, optFileContent...)
 	if err := os.WriteFile(OptFileName, newContent, 0644); err != nil {
-		fmt.Println("写回 opt.v 出错:", err)
 		return err
 	}
 	return nil
@@ -2285,12 +2140,12 @@ func EqualFuzzCXXRTL(workersPerType, equalNumber int) {
 }
 
 func TestAllEquivalence() {
-	StartCounterLogger("cxxrtl_verilator_task_counter.txt") // 每30秒写入一次任务总数
+	StartCounterLogger("cxxrtl_verilator_task_counter.txt")
 
 	//go EqualFuzzIverilog(50, 10)
 	go EqualFuzzVerilator(50, 10)
 	//go EqualFuzzYosysOpt(30, 10)
 	go EqualFuzzCXXRTL(50, 10)
 
-	select {} // 阻塞主线程
+	select {}
 }

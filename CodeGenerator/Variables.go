@@ -13,7 +13,6 @@ const (
 	VarTypeReg
 )
 
-// VerilogVariable 定义了Verilog变量的接口
 type VerilogVariable interface {
 	GetName() string
 	GetType() VerilogVarType
@@ -31,8 +30,8 @@ func (b *BitRange) GetWidth() int {
 }
 
 type Variable struct {
-	Name       string         // 变量名
-	Type       VerilogVarType // 变量类型
+	Name       string
+	Type       VerilogVarType
 	Range      *BitRange
 	hasRange   bool
 	UsageCount int
@@ -55,22 +54,18 @@ func (v *Variable) GetWidth() int {
 	return 1
 }
 
-// GetName 返回变量名
 func (v *Variable) GetName() string {
 	return v.Name
 }
 
-// GetType 返回变量类型
 func (v *Variable) GetType() VerilogVarType {
 	return v.Type
 }
 
-// GetUsageCount 返回变量使用次数
 func (v *Variable) GetUsageCount() int {
 	return v.UsageCount
 }
 
-// IncrementUsageCount 增加变量使用次数
 func (v *Variable) IncrementUsageCount() {
 	v.UsageCount++
 }
