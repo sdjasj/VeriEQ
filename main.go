@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -101,268 +102,6 @@ func (f *Fuzzer) Init() {
 		"-fno-subst-const",
 		"-fno-table",
 	}
-}
-
-func RunVerilator(option string, inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
-	// 运行 Verilator 编译
-	verilatorPath := "/root/hardware-test/verilator/verilator/bin/verilator"
-	subDirName := "obj_dir"
-	safeOption := strings.ReplaceAll(option, "-", "_")
-	if option != "" {
-		subDirName += "_" + safeOption
-	}
-	verilatorOutputDir := filepath.Join(realSubDir, subDirName)
-	verilatorLogFileName := filepath.Join(realSubDir, fmt.Sprintf("verlator_%s.log", safeOption))
-	//verilatorLogFileName := filepath.Join(realSubDir, "verilator.log")
-	args := []string{
-		"--binary",
-		"-Wno-lint",
-		"--timing",
-		"--top-module", "tb_dut_module",
-	}
-	if option != "" {
-		args = append(args, option)
-	}
-	args = append(args, []string{"-Mdir", verilatorOutputDir}...)
-
-	args = append(args, tmpFileName)
-	args = append(args, tbFileName)
-	cmd := exec.Command(verilatorPath, args...)
-	cmd.Dir = realSubDir
-
-	logFile, err := os.Create(verilatorLogFileName)
-	defer logFile.Close()
-	if err != nil {
-		fmt.Println("Error creating log file:", err)
-		return nil, nil
-	}
-
-	var stderrBuffer bytes.Buffer
-	cmd.Stdout = logFile
-	cmd.Stderr = &stderrBuffer
-	//fmt.Println(cmd.String())
-
-	if err := cmd.Run(); err != nil {
-		//handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, stderrBuffer.String())
-		fmt.Println(err)
-		processCrash(verilatorLogFileName, stderrBuffer.String())
-		return nil, err
-	}
-
-	// 运行 Verilator 模型
-	testbenchInputPath := filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
-	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写 testbench 输入出错:", err)
-		return nil, err
-	}
-	cmd = exec.Command("./Vtb_dut_module")
-	cmd.Dir = verilatorOutputDir
-	cmd.Stdout = logFile
-	cmd.Stderr = &stderrBuffer
-	stderrBuffer.Reset()
-	if err := cmd.Run(); err != nil {
-		//handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, stderrBuffer.String())
-		processCrash(verilatorLogFileName, stderrBuffer.String())
-		return nil, err
-	}
-
-	verilatorData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
-	if err != nil {
-		fmt.Printf("读取verilator输出出错, %v\n", err)
-		//handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
-		processCrash(verilatorLogFileName, err.Error())
-	}
-	verilatorOut := filepath.Join(realSubDir, fmt.Sprintf("verilator_%s_output.txt", safeOption))
-	_ = os.WriteFile(verilatorOut, verilatorData, 0o644)
-	return verilatorData, err
-}
-
-func (f *Fuzzer) RunIVerilog(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
-	iverilogDir := filepath.Join(realSubDir, "iverilog")
-	if err := os.MkdirAll(iverilogDir, 0755); err != nil {
-		fmt.Println("创建 iverilog 目录失败:", err)
-		return nil, err
-	}
-
-	aoutPath := filepath.Join(iverilogDir, "a.out")
-	args := []string{tmpFileName, tbFileName, "-o", aoutPath}
-	cmd := exec.Command("iverilog", args...)
-	cmd.Env = append(os.Environ(), "ASAN_OPTIONS=detect_leaks=0")
-	cmd.Dir = realSubDir
-
-	iverilogLogFileName := filepath.Join(realSubDir, GetRandomFileName("iverilog", ".log", ""))
-	logFile, err := os.Create(iverilogLogFileName)
-	defer logFile.Close()
-	if err != nil {
-		fmt.Println("创建 iverilog 日志失败:", err)
-		return nil, err
-	}
-	var stderrBuffer bytes.Buffer
-	cmd.Stdout = logFile
-	cmd.Stderr = &stderrBuffer
-
-	if err := cmd.Run(); err != nil {
-		handleFailure(f.CrashDir, iverilogLogFileName, stderrBuffer.String(), err.Error())
-		return nil, err
-	}
-
-	// 执行 Icarus 仿真
-	testbenchInputPath := filepath.Join(iverilogDir, generator.TestBenchInputFileName)
-	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
-		fmt.Println("写入 testbench 输入文件失败:", err)
-		return nil, err
-	}
-	cmd = exec.Command("./a.out")
-	cmd.Env = append(os.Environ(), "ASAN_OPTIONS=detect_leaks=0")
-	cmd.Dir = iverilogDir
-	cmd.Stdout = logFile
-	cmd.Stderr = &stderrBuffer
-	stderrBuffer.Reset()
-	if err := cmd.Run(); err != nil {
-		handleFailure(f.CrashDir, iverilogLogFileName, stderrBuffer.String(), err.Error())
-		return nil, err
-	}
-
-	iverilogData, err := os.ReadFile(filepath.Join(iverilogDir, generator.TestBenchOutputFileName))
-	if err != nil {
-		fmt.Println("读取iverilog输出出错:", err)
-		handleFailure(f.CrashDir, realSubDir, iverilogLogFileName, err.Error())
-		return nil, err
-	}
-
-	iverilogOut := filepath.Join(realSubDir, "iverilog_output.txt")
-	_ = os.WriteFile(iverilogOut, iverilogData, 0o644)
-	return iverilogData, nil
-}
-
-func (f *Fuzzer) RunCXXRTL(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
-	//printDirTree(realSubDir)
-	//_ = os.Remove(generator.TestBenchOutputFileName)
-	// 1. 创建 cxxrtl 工作目录
-	cxxrtlDir := filepath.Join(realSubDir, "cxxrtl")
-	if err := os.MkdirAll(cxxrtlDir, 0o755); err != nil {
-		fmt.Println("创建 cxxrtl 目录失败:", err)
-		return nil, err
-	}
-	CXXTestBenchData := generator.GenerateCXXRTLTestBench()
-	CXXTestBenchFile := filepath.Join(cxxrtlDir, "main.cpp")
-	if err := os.WriteFile(CXXTestBenchFile, []byte(CXXTestBenchData), 0644); err != nil {
-		fmt.Println("创建 cxxrtl 激励文件失败: ", err)
-		return nil, err
-	}
-
-	// 2. 用 Yosys 把设计转换成 CXXRTL 的 main.cpp
-	//    tb.v 依旧作为顶层；若顶层名称不是 tb，自行替换 "-top tb"
-	yosysCmd := exec.Command(
-		"yosys",
-		"-p",
-		fmt.Sprintf(
-			"read_verilog %s; write_cxxrtl test.cpp",
-			tmpFileName),
-	)
-	yosysCmd.Dir = cxxrtlDir
-
-	cxxrtlLog := filepath.Join(realSubDir, GetRandomFileName("cxxrtl", ".log", ""))
-
-	logFile, err := os.Create(cxxrtlLog)
-	defer logFile.Close()
-	if err != nil {
-		fmt.Println("创建 cxxrtl 日志失败:", err)
-		return nil, err
-	}
-
-	var cxxrtlStderr bytes.Buffer
-	yosysCmd.Stdout = logFile
-	yosysCmd.Stderr = &cxxrtlStderr
-
-	if err := yosysCmd.Run(); err != nil {
-		fmt.Println("cxxrtl生成失败")
-		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
-		return nil, err
-	}
-
-	// 3. 编译 CXXRTL 生成的 main.cpp
-	compileCmd := "clang++ -w -g -O3 -std=c++14 " +
-		"-I $(yosys-config --datdir)/include/backends/cxxrtl/runtime " +
-		"main.cpp -o cxxsim"
-	// 需要 shell 来展开 $(yosys-config ...)
-	build := exec.Command("bash", "-c", compileCmd)
-	build.Dir = cxxrtlDir
-	build.Stdout = logFile
-	build.Stderr = &cxxrtlStderr
-	cxxrtlStderr.Reset()
-
-	if err := build.Run(); err != nil {
-		fmt.Println("cxxrtl编译失败")
-		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
-		return nil, err
-	}
-
-	// 4. 把 testbench 输入文件复制到 cxxrtl 目录
-	tbInputPath := filepath.Join(cxxrtlDir, generator.TestBenchInputFileName)
-	if err := os.WriteFile(tbInputPath, []byte(inputData), 0o644); err != nil {
-		fmt.Println("写入 CXXRTL testbench 输入失败:", err)
-		return nil, err
-	}
-
-	// 5. 运行 CXXRTL 仿真
-	sim := exec.Command("./cxxsim")
-	sim.Dir = cxxrtlDir
-	sim.Stdout = logFile
-	sim.Stderr = &cxxrtlStderr
-	cxxrtlStderr.Reset()
-
-	if err := sim.Run(); err != nil {
-		fmt.Println("cxxrtl运行失败")
-		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
-		return nil, err
-	}
-
-	// 6. 读取 CXXRTL 输出
-	cxxrtlData, err := os.ReadFile(filepath.Join(cxxrtlDir, "output.txt"))
-	if err != nil {
-		fmt.Println("读取 CXXRTL 输出出错:", err)
-		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, err.Error())
-		return nil, err
-	}
-	//printDirTree(realSubDir)
-	//_ = os.Remove(generator.TestBenchOutputFileName)
-	/* ---------- 三方结果一致性比较 ---------- */
-
-	cxxrtlOut := filepath.Join(realSubDir, "cxxrtl_output.txt")
-	_ = os.WriteFile(cxxrtlOut, cxxrtlData, 0o644)
-	return cxxrtlData, nil
-}
-
-func (f *Fuzzer) RunYosysOpt(realSubDir, OptFileName string) error {
-	var stderrBuffer bytes.Buffer
-	yosysOptFile := filepath.Join(realSubDir, "yosys_opt.log")
-	logFile, err := os.Create(yosysOptFile)
-	if err != nil {
-		fmt.Println("创建 yosys_opt 日志失败:", err)
-		return err
-	}
-	cmd := exec.Command("yosys", "-p", "read_verilog test.v; opt; proc; write_verilog opt.v")
-	cmd.Dir = realSubDir
-	cmd.Stdout = logFile
-	cmd.Stderr = &stderrBuffer
-	if err := cmd.Run(); err != nil {
-		handleFailure(f.CrashDir, realSubDir, yosysOptFile, stderrBuffer.String()+err.Error())
-		return err
-	}
-
-	optFileContent, err := os.ReadFile(OptFileName)
-	if err != nil {
-		fmt.Println("读取 opt.v 出错:", err)
-		return err
-	}
-	newContent := []byte("`timescale 1ns/1ps\n")
-	newContent = append(newContent, optFileContent...)
-	if err := os.WriteFile(OptFileName, newContent, 0644); err != nil {
-		fmt.Println("写回 opt.v 出错:", err)
-		return err
-	}
-	return nil
 }
 
 func (f *Fuzzer) Fuzz() {
@@ -666,121 +405,6 @@ func (f *Fuzzer) Fuzz() {
 		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
 	)
 	_ = copyDir(realSubDir, uniqueCrashDir)
-
-}
-
-func (f *Fuzzer) TestYosysOptUsingVerilatorWithManyOptions() {
-	// 生成 Verilog 相关
-	generator := CodeGenerator.NewExpressionGenerator()
-	curMillis := time.Now().UnixMilli()
-	curTimeStr := strconv.FormatInt(curMillis, 10)
-
-	subDir := strconv.FormatInt(curMillis%1000, 10)
-	tmpSubDir := filepath.Join(f.TmpDir, subDir)
-
-	if err := os.MkdirAll(tmpSubDir, 0755); err != nil {
-		fmt.Println(err)
-		return
-	}
-	realSubDir := filepath.Join(tmpSubDir, GetRandomFileName("tmp_", "", ""))
-	if err := os.MkdirAll(realSubDir, 0755); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// 生成文件路径
-	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
-	OptFileName := filepath.Join(realSubDir, "opt.v")
-	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
-
-	// 写 test.v
-	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeModule()), 0644); err != nil {
-		fmt.Println("写 test.v 出错:", err)
-		return
-	}
-
-	// 写 tb.v
-	tbData := generator.GenerateTb()
-	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
-		fmt.Println("写 tb.v 出错:", err)
-		return
-	}
-
-	inputData := generator.GenerateInputFile()
-
-	err := f.RunYosysOpt(realSubDir, OptFileName)
-	if err != nil {
-		return
-	}
-	optionLength := len(f.VerilatorOptions)
-	verilatorOutput := make([][]byte, optionLength)
-	verilatorTaskState := make([]bool, optionLength)
-	var wg sync.WaitGroup
-	wg.Add(optionLength)
-	for i := 0; i < optionLength; i++ {
-		i := i
-		go func() {
-			defer wg.Done()
-			verilatorData, err := RunVerilator(f.VerilatorOptions[i], inputData,
-				generator, realSubDir, OptFileName, tbFileName)
-			if err != nil {
-				fmt.Println("error of ", f.VerilatorOptions[i])
-				return
-			}
-			//fmt.Println(f.VerilatorOptions[i])
-			verilatorTaskState[i] = true
-			verilatorOutput[i] = verilatorData
-		}()
-		//verilatorData, err := RunVerilator(f.VerilatorOptions[i], inputData,
-		//	generator, realSubDir, tmpFileName, tbFileName)
-		//if err != nil {
-		//	fmt.Println("error of ", f.VerilatorOptions[i])
-		//	return
-		//}
-		//verilatorTaskState[i] = true
-		//verilatorOutput[i] = verilatorData
-	}
-	wg.Wait()
-	for i := 0; i < optionLength; i++ {
-		if !verilatorTaskState[i] {
-			fmt.Println("verilator compile or test fail in " + f.VerilatorOptions[i])
-			handleFailure(f.CrashDir, realSubDir, "", "")
-			return
-		}
-	}
-
-	inconsistentFound := false
-	for i := 0; i < optionLength; i++ {
-		for j := i + 1; j < optionLength; j++ {
-			if !bytes.Equal(verilatorOutput[i], verilatorOutput[j]) {
-				inconsistentFound = true
-				fmt.Printf("不一致: [%s] vs [%s]\n", f.VerilatorOptions[i], f.VerilatorOptions[j])
-
-				diffContent := fmt.Sprintf(
-					"==== %s vs %s ====\n%s\n",
-					f.VerilatorOptions[i], f.VerilatorOptions[j],
-					diffLines(verilatorOutput[i], verilatorOutput[j]),
-				)
-
-				diffFile := filepath.Join(realSubDir, fmt.Sprintf("diff_%d_vs_%d.txt", i, j))
-				_ = os.WriteFile(diffFile, []byte(diffContent), 0o644)
-			}
-		}
-	}
-
-	if inconsistentFound {
-		// 标记 panic
-		fmt.Println("bug occur!!!!!!!!!")
-
-		// 保存 crash 目录
-		handleFailure(f.CrashDir, realSubDir, "", "")
-		fmt.Println("发现差异，已保存至 crash 目录")
-	} else {
-		fmt.Println(curTimeStr + " 所有 Verilator 优化选项结果一致")
-		if err := os.RemoveAll(realSubDir); err != nil {
-			fmt.Printf("删除临时测试目录失败: %v\n", err)
-		}
-	}
 
 }
 
@@ -1366,7 +990,7 @@ func checkSanitizerErrorFromStderr(stderr string) bool {
 }
 
 func main() {
-	TestEqualExpressionGenerator()
+	TestAllEquivalence()
 }
 
 // TestSimpleCXXRTL 用固定电路验证 CXXRTL 流程能否正常工作。
@@ -1407,6 +1031,117 @@ func TestSimpleCXXRTL() error {
 	yosysCmd.Dir = tmpDir
 	if out, err := yosysCmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("Yosys 失败: %v\n%s", err, out)
+	}
+
+	// 3. 编译 main.cpp
+	buildCmd := `clang++ -w -g -O3 -std=c++14 ` +
+		`-I $(yosys-config --datdir)/include/backends/cxxrtl/runtime ` +
+		`main.cpp -o cxxsim`
+	compile := exec.Command("bash", "-c", buildCmd)
+	compile.Dir = tmpDir
+	if out, err := compile.CombinedOutput(); err != nil {
+		return fmt.Errorf("clang++ 失败: %v\n%s", err, out)
+	}
+
+	// 4. 运行仿真
+	run := exec.Command("./cxxsim")
+	run.Dir = tmpDir
+	if out, err := run.CombinedOutput(); err != nil {
+		return fmt.Errorf("CXXRTL 运行失败: %v\n%s", err, out)
+	} else if len(out) != 0 {
+		// CXXRTL 默认没有 stdout；有输出也无妨
+	}
+
+	// 5. 读取并校验 out.txt
+	gotBytes, err := os.ReadFile(filepath.Join(tmpDir, "output.txt"))
+	if err != nil {
+		return fmt.Errorf("读取 output.txt 失败: %v", err)
+	}
+
+	fmt.Println(gotBytes)
+	return nil
+}
+
+func TestEqualCXXRTL() error {
+	// 1. 创建临时目录并写入 Verilog 源文件
+	tmpDir, err := os.MkdirTemp("", "cxxrtl_equal_")
+	fmt.Println(tmpDir)
+	//defer os.RemoveAll(tmpDir)
+	if err != nil {
+		return fmt.Errorf("创建临时目录失败: %v", err)
+	}
+	equalNum := 5
+	generator := CodeGenerator.NewExpressionGenerator()
+	dut := generator.GenerateEquivalentModulesWithOneTop(equalNum)
+	tb := generator.GenerateCXXRTLMultiModuleTestBench(equalNum)
+	inputStr := generator.GenerateInputFile()
+
+	dutFile := filepath.Join(tmpDir, "dut.v")
+	tbFile := filepath.Join(tmpDir, "main.cpp")
+	inputFile := filepath.Join(tmpDir, "input.txt")
+	if err := os.WriteFile(dutFile, []byte(dut), 0644); err != nil {
+		return err
+	}
+	if err := os.WriteFile(tbFile, []byte(tb), 0644); err != nil {
+		return err
+	}
+	if err := os.WriteFile(inputFile, []byte(inputStr), 0644); err != nil {
+		return err
+	}
+
+	// 2. 调 Yosys 生成 CXXRTL main.cpp
+	var wg sync.WaitGroup
+	errCh := make(chan error, equalNum) // 容量等于任务数，防止阻塞
+
+	for i := 0; i < equalNum; i++ {
+		i := i // 避免闭包捕获问题
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			outputFile := fmt.Sprintf("test%d.cpp", i)
+			outputPath := filepath.Join(tmpDir, outputFile)
+
+			yosysCmd := exec.Command(
+				"yosys",
+				"-p", fmt.Sprintf(
+					"read_verilog %s; hierarchy -top top_eq%d; write_cxxrtl %s",
+					dutFile, i, outputFile),
+			)
+			yosysCmd.Dir = tmpDir
+
+			if out, err := yosysCmd.CombinedOutput(); err != nil {
+				errCh <- fmt.Errorf("Yosys failed for top_eq%d: %v\n%s", i, err, string(out))
+				return
+			}
+
+			// 读取 test%d.cpp 并删除末尾 5 行
+			data, err := os.ReadFile(outputPath)
+			if err != nil {
+				errCh <- fmt.Errorf("读取 %s 失败: %v", outputFile, err)
+				return
+			}
+			lines := strings.Split(string(data), "\n")
+			if len(lines) > 5 {
+				lines = lines[:len(lines)-5]
+			}
+			newContent := strings.Join(lines, "\n")
+			if err := os.WriteFile(outputPath, []byte(newContent), 0644); err != nil {
+				errCh <- fmt.Errorf("写回 %s 失败: %v", outputFile, err)
+			}
+		}(i)
+
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	// 统一处理错误
+	for err := range errCh {
+		if err != nil {
+			fmt.Println("Error:", err)
+			return err
+		}
 	}
 
 	// 3. 编译 main.cpp
@@ -1645,17 +1380,10 @@ func TestEqualExpressionGenerator() {
 	g := CodeGenerator.NewExpressionGenerator()
 	g.Name = "top"
 
-	equalNumber := 30
-	modules := g.GenerateLoopFreeEquivalentModules(equalNumber)
+	equalNumber := 3
+	modules := g.GenerateEquivalentModulesWithOneTop(equalNumber)
 
-	// 将所有模块合并在一个文件中
-	var combinedModule strings.Builder
-	for _, module := range modules {
-		combinedModule.WriteString(module)
-		combinedModule.WriteString("\n\n")
-	}
-
-	if err := os.WriteFile("test.v", []byte(combinedModule.String()), 0644); err != nil {
+	if err := os.WriteFile("test.v", []byte(modules), 0644); err != nil {
 		panic(err)
 	}
 
@@ -1672,4 +1400,897 @@ func TestEqualExpressionGenerator() {
 	}
 
 	fmt.Println("✅ test.v, tb.v, input.txt 已生成，模块均已内联")
+}
+
+func (f *Fuzzer) TestYosysOptUsingVerilatorWithManyOptions() {
+	// 生成 Verilog 相关
+	generator := CodeGenerator.NewExpressionGenerator()
+	curMillis := time.Now().UnixMilli()
+	curTimeStr := strconv.FormatInt(curMillis, 10)
+
+	subDir := strconv.FormatInt(curMillis%1000, 10)
+	tmpSubDir := filepath.Join(f.TmpDir, subDir)
+
+	if err := os.MkdirAll(tmpSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+	realSubDir := filepath.Join(tmpSubDir, GetRandomFileName("tmp_", "", ""))
+	if err := os.MkdirAll(realSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// 生成文件路径
+	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
+	OptFileName := filepath.Join(realSubDir, "opt.v")
+	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
+
+	// 写 test.v
+	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeModule()), 0644); err != nil {
+		fmt.Println("写 test.v 出错:", err)
+		return
+	}
+
+	// 写 tb.v
+	tbData := generator.GenerateTb()
+	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
+		fmt.Println("写 tb.v 出错:", err)
+		return
+	}
+
+	inputData := generator.GenerateInputFile()
+
+	err := f.RunYosysOpt(realSubDir, OptFileName)
+	if err != nil {
+		return
+	}
+	optionLength := len(f.VerilatorOptions)
+	verilatorOutput := make([][]byte, optionLength)
+	verilatorTaskState := make([]bool, optionLength)
+	var wg sync.WaitGroup
+	wg.Add(optionLength)
+	for i := 0; i < optionLength; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			verilatorData, err := RunVerilator(f.VerilatorOptions[i], inputData,
+				generator, realSubDir, OptFileName, tbFileName)
+			if err != nil {
+				fmt.Println("error of ", f.VerilatorOptions[i])
+				return
+			}
+			//fmt.Println(f.VerilatorOptions[i])
+			verilatorTaskState[i] = true
+			verilatorOutput[i] = verilatorData
+		}()
+		//verilatorData, err := RunVerilator(f.VerilatorOptions[i], inputData,
+		//	generator, realSubDir, tmpFileName, tbFileName)
+		//if err != nil {
+		//	fmt.Println("error of ", f.VerilatorOptions[i])
+		//	return
+		//}
+		//verilatorTaskState[i] = true
+		//verilatorOutput[i] = verilatorData
+	}
+	wg.Wait()
+	for i := 0; i < optionLength; i++ {
+		if !verilatorTaskState[i] {
+			fmt.Println("verilator compile or test fail in " + f.VerilatorOptions[i])
+			handleFailure(f.CrashDir, realSubDir, "", "")
+			return
+		}
+	}
+
+	inconsistentFound := false
+	for i := 0; i < optionLength; i++ {
+		for j := i + 1; j < optionLength; j++ {
+			if !bytes.Equal(verilatorOutput[i], verilatorOutput[j]) {
+				inconsistentFound = true
+				fmt.Printf("不一致: [%s] vs [%s]\n", f.VerilatorOptions[i], f.VerilatorOptions[j])
+
+				diffContent := fmt.Sprintf(
+					"==== %s vs %s ====\n%s\n",
+					f.VerilatorOptions[i], f.VerilatorOptions[j],
+					diffLines(verilatorOutput[i], verilatorOutput[j]),
+				)
+
+				diffFile := filepath.Join(realSubDir, fmt.Sprintf("diff_%d_vs_%d.txt", i, j))
+				_ = os.WriteFile(diffFile, []byte(diffContent), 0o644)
+			}
+		}
+	}
+
+	if inconsistentFound {
+		// 标记 panic
+		fmt.Println("bug occur!!!!!!!!!")
+
+		// 保存 crash 目录
+		handleFailure(f.CrashDir, realSubDir, "", "")
+		fmt.Println("发现差异，已保存至 crash 目录")
+	} else {
+		fmt.Println(curTimeStr + " 所有 Verilator 优化选项结果一致")
+		if err := os.RemoveAll(realSubDir); err != nil {
+			fmt.Printf("删除临时测试目录失败: %v\n", err)
+		}
+	}
+
+}
+
+func (f *Fuzzer) TestEqualModulesCXXRTL(equalNumber int) {
+	generator := CodeGenerator.NewExpressionGenerator()
+	curMillis := time.Now().UnixMilli()
+	curTimeStr := strconv.FormatInt(curMillis, 10)
+	subDir := strconv.FormatInt(curMillis%1000, 10)
+	tmpSubDir := filepath.Join(f.TmpDir, subDir)
+
+	if err := os.MkdirAll(tmpSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+	realSubDir := filepath.Join(tmpSubDir, GetRandomFileName("tmp_cxxrtl", "", ""))
+	if err := os.MkdirAll(realSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
+	tbFileName := filepath.Join(realSubDir, "main.cpp")
+	tb := generator.GenerateCXXRTLMultiModuleTestBench(equalNumber)
+
+	if err := os.WriteFile(tbFileName, []byte(tb), 0644); err != nil {
+		fmt.Println("写 main.cpp 出错:", err)
+		return
+	}
+
+	// 写 test.v
+	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
+		fmt.Println("写 test.v 出错:", err)
+		return
+	}
+
+	// 2. 调 Yosys 生成 CXXRTL main.cpp
+	var wg sync.WaitGroup
+	errCh := make(chan error, equalNumber) // 容量等于任务数，防止阻塞
+
+	for i := 0; i < equalNumber; i++ {
+		i := i // 避免闭包捕获问题
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			outputFile := fmt.Sprintf("test%d.cpp", i)
+			outputPath := filepath.Join(realSubDir, outputFile)
+
+			yosysCmd := exec.Command(
+				"yosys",
+				"-p", fmt.Sprintf(
+					"read_verilog %s; hierarchy -top top_eq%d; write_cxxrtl %s",
+					tmpFileName, i, outputFile),
+			)
+			yosysCmd.Dir = realSubDir
+
+			if out, err := yosysCmd.CombinedOutput(); err != nil {
+				errCh <- fmt.Errorf("Yosys failed for top_eq%d: %v\n%s", i, err, string(out))
+				return
+			}
+
+			// 读取 test%d.cpp 并删除末尾 5 行
+			data, err := os.ReadFile(outputPath)
+			if err != nil {
+				errCh <- fmt.Errorf("读取 %s 失败: %v", outputFile, err)
+				return
+			}
+			lines := strings.Split(string(data), "\n")
+			if len(lines) > 5 {
+				lines = lines[:len(lines)-5]
+			}
+			newContent := strings.Join(lines, "\n")
+			if err := os.WriteFile(outputPath, []byte(newContent), 0644); err != nil {
+				errCh <- fmt.Errorf("写回 %s 失败: %v", outputFile, err)
+			}
+		}(i)
+
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	// 统一处理错误
+	for err := range errCh {
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+	}
+
+	inputData := generator.GenerateInputFile()
+
+	cxxrtlData, err := f.RunCXXRTL(inputData,
+		generator, realSubDir, tmpFileName, tbFileName)
+	if err != nil {
+		return
+	}
+	if !strings.Contains(string(cxxrtlData), "NO") {
+		if err := os.RemoveAll(realSubDir); err != nil {
+			fmt.Printf("删除临时测试目录失败: %v\n", err)
+		}
+		//fmt.Println("cxxrtl finish!!!")
+		return
+	}
+	//fmt.Println("cxxrtl bug occur!!!!!!!!!")
+	uniqueCrashDir := filepath.Join(
+		f.CrashDir,
+		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
+	)
+	_ = copyDir(realSubDir, uniqueCrashDir)
+}
+
+func (f *Fuzzer) TestEqualModulesIcarus(equalNumber int) {
+	generator := CodeGenerator.NewExpressionGenerator()
+	if equalNumber == 0 {
+		equalNumber = 10
+	}
+	curMillis := time.Now().UnixMilli()
+	curTimeStr := strconv.FormatInt(curMillis, 10)
+	subDir := strconv.FormatInt(curMillis%1000, 10)
+	tmpSubDir := filepath.Join(f.TmpDir, subDir)
+
+	if err := os.MkdirAll(tmpSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+	realSubDir := filepath.Join(tmpSubDir, GetRandomFileName("tmp_iverilog", "", ""))
+	if err := os.MkdirAll(realSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
+	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
+
+	// 写 test.v
+	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
+		fmt.Println("写 test.v 出错:", err)
+		return
+	}
+
+	// 写 tb.v
+	tbData := generator.GenerateEquivalenceCheckTb(equalNumber)
+	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
+		fmt.Println("写 tb.v 出错:", err)
+		return
+	}
+
+	inputData := generator.GenerateInputFile()
+
+	iverilogData, err := f.RunIVerilog(inputData,
+		generator, realSubDir, tmpFileName, tbFileName)
+	if err != nil {
+		return
+	}
+	if !strings.Contains(string(iverilogData), "NO") {
+		if err := os.RemoveAll(realSubDir); err != nil {
+			fmt.Printf("删除临时测试目录失败: %v\n", err)
+		}
+		//fmt.Println("iverilog finish!!!")
+		return
+	}
+	//fmt.Println("iverilog bug occur!!!!!!!!!")
+	uniqueCrashDir := filepath.Join(
+		f.CrashDir,
+		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
+	)
+	_ = copyDir(realSubDir, uniqueCrashDir)
+}
+
+func (f *Fuzzer) TestEqualModulesVerilator(equalNumber int) {
+	generator := CodeGenerator.NewExpressionGenerator()
+	if equalNumber == 0 {
+		equalNumber = 10
+	}
+	curMillis := time.Now().UnixMilli()
+	curTimeStr := strconv.FormatInt(curMillis, 10)
+	subDir := strconv.FormatInt(curMillis%1000, 10)
+	tmpSubDir := filepath.Join(f.TmpDir, subDir)
+
+	if err := os.MkdirAll(tmpSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+	realSubDir := filepath.Join(tmpSubDir, GetRandomFileName("tmp_verilator", "", ""))
+	if err := os.MkdirAll(realSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
+	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
+
+	// 写 test.v
+	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
+		fmt.Println("写 test.v 出错:", err)
+		return
+	}
+
+	// 写 tb.v
+	tbData := generator.GenerateEquivalenceCheckTb(equalNumber)
+	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
+		fmt.Println("写 tb.v 出错:", err)
+		return
+	}
+
+	inputData := generator.GenerateInputFile()
+
+	verilatorData, err := f.RunVerilator(inputData,
+		generator, realSubDir, tmpFileName, tbFileName)
+	if err != nil {
+		return
+	}
+	if !strings.Contains(string(verilatorData), "NO") {
+		if err := os.RemoveAll(realSubDir); err != nil {
+			fmt.Printf("删除临时测试目录失败: %v\n", err)
+		}
+		//fmt.Println("verilator finish!!!")
+		return
+	}
+	//fmt.Println("verilator bug occur!!!!!!!!!")
+	uniqueCrashDir := filepath.Join(
+		f.CrashDir,
+		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
+	)
+	_ = copyDir(realSubDir, uniqueCrashDir)
+}
+
+func (f *Fuzzer) TestEqualModulesYosysOpt(equalNumber int) {
+	generator := CodeGenerator.NewExpressionGenerator()
+	if equalNumber == 0 {
+		equalNumber = 10
+	}
+	curMillis := time.Now().UnixMilli()
+	curTimeStr := strconv.FormatInt(curMillis, 10)
+	subDir := strconv.FormatInt(curMillis%1000, 10)
+	tmpSubDir := filepath.Join(f.TmpDir, subDir)
+
+	if err := os.MkdirAll(tmpSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+	realSubDir := filepath.Join(tmpSubDir, GetRandomFileName("tmp_yosysOpt", "", ""))
+	if err := os.MkdirAll(realSubDir, 0755); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	tmpFileName := filepath.Join(realSubDir, f.TestFileName)
+	tbFileName := filepath.Join(realSubDir, f.TestBenchName)
+
+	// 写 test.v
+	if err := os.WriteFile(tmpFileName, []byte(generator.GenerateLoopFreeEquivalentModules(equalNumber)), 0644); err != nil {
+		fmt.Println("写 test.v 出错:", err)
+		return
+	}
+
+	// 写 tb.v
+	tbData := generator.GenerateEquivalenceCheckTb(equalNumber)
+	if err := os.WriteFile(tbFileName, []byte(tbData), 0644); err != nil {
+		fmt.Println("写 tb.v 出错:", err)
+		return
+	}
+
+	inputData := generator.GenerateInputFile()
+
+	preData, optData, err := f.RunYosysOptAndSim(inputData,
+		generator, realSubDir, tmpFileName, tbFileName)
+	if err != nil {
+		return
+	}
+	if !strings.Contains(string(preData), "NO") && !strings.Contains(string(optData), "NO") {
+		if err := os.RemoveAll(realSubDir); err != nil {
+			fmt.Printf("删除临时测试目录失败: %v\n", err)
+		}
+		//fmt.Println("yosysOpt finish!!!")
+		return
+	}
+	//fmt.Println("yosysOpt bug occur!!!!!!!!!")
+	uniqueCrashDir := filepath.Join(
+		f.CrashDir,
+		"crash_"+curTimeStr+"_"+GetRandomFileName("", "", ""),
+	)
+	_ = copyDir(realSubDir, uniqueCrashDir)
+}
+
+func RunVerilator(option string, inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
+	// 运行 Verilator 编译
+	verilatorPath := "/root/hardware-test/verilator/verilator/bin/verilator"
+	subDirName := "obj_dir"
+	safeOption := strings.ReplaceAll(option, "-", "_")
+	if option != "" {
+		subDirName += "_" + safeOption
+	}
+	verilatorOutputDir := filepath.Join(realSubDir, subDirName)
+	verilatorLogFileName := filepath.Join(realSubDir, fmt.Sprintf("verlator_%s.log", safeOption))
+	//verilatorLogFileName := filepath.Join(realSubDir, "verilator.log")
+	args := []string{
+		"--binary",
+		"-Wno-lint",
+		"--timing",
+		"--top-module", "tb_dut_module",
+	}
+	if option != "" {
+		args = append(args, option)
+	}
+	args = append(args, []string{"-Mdir", verilatorOutputDir}...)
+
+	args = append(args, tmpFileName)
+	args = append(args, tbFileName)
+	cmd := exec.Command(verilatorPath, args...)
+	cmd.Dir = realSubDir
+
+	logFile, err := os.Create(verilatorLogFileName)
+	defer logFile.Close()
+	if err != nil {
+		fmt.Println("Error creating log file:", err)
+		return nil, nil
+	}
+
+	var stderrBuffer bytes.Buffer
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	//fmt.Println(cmd.String())
+
+	if err := cmd.Run(); err != nil {
+		//handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, stderrBuffer.String())
+		fmt.Println(err)
+		processCrash(verilatorLogFileName, stderrBuffer.String())
+		return nil, err
+	}
+
+	// 运行 Verilator 模型
+	testbenchInputPath := filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
+	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
+		fmt.Println("写 testbench 输入出错:", err)
+		return nil, err
+	}
+	cmd = exec.Command("./Vtb_dut_module")
+	cmd.Dir = verilatorOutputDir
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	stderrBuffer.Reset()
+	if err := cmd.Run(); err != nil {
+		//handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, stderrBuffer.String())
+		processCrash(verilatorLogFileName, stderrBuffer.String())
+		return nil, err
+	}
+
+	verilatorData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
+	if err != nil {
+		fmt.Printf("读取verilator输出出错, %v\n", err)
+		//handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
+		processCrash(verilatorLogFileName, err.Error())
+	}
+	verilatorOut := filepath.Join(realSubDir, fmt.Sprintf("verilator_%s_output.txt", safeOption))
+	_ = os.WriteFile(verilatorOut, verilatorData, 0o644)
+	return verilatorData, err
+}
+
+func (f *Fuzzer) RunVerilator(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
+	verilatorPath := "/root/hardware-test/verilator/verilator/bin/verilator"
+	verilatorOutputDir := filepath.Join(realSubDir, "obj_dir")
+	verilatorLogFileName := filepath.Join(realSubDir, GetRandomFileName("verilator", ".log", ""))
+
+	args := []string{
+		"--binary",
+		"-Wno-lint",
+		"--timing",
+		tmpFileName,
+		tbFileName,
+	}
+	cmd := exec.Command(verilatorPath, args...)
+	cmd.Dir = realSubDir
+
+	logFile, err := os.Create(verilatorLogFileName)
+	defer logFile.Close()
+	if err != nil {
+		fmt.Println("Error creating log file:", err)
+		return nil, err
+	}
+
+	var stderrBuffer bytes.Buffer
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, stderrBuffer.String())
+		return nil, err
+	}
+
+	// 运行 Verilator 模型
+	testbenchInputPath := filepath.Join(verilatorOutputDir, generator.TestBenchInputFileName)
+	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
+		fmt.Println("写 testbench 输入出错:", err)
+		return nil, err
+	}
+	cmd = exec.Command("./Vtest")
+	cmd.Dir = verilatorOutputDir
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	stderrBuffer.Reset()
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, stderrBuffer.String())
+		return nil, err
+	}
+
+	verilatorData, err := os.ReadFile(filepath.Join(verilatorOutputDir, generator.TestBenchOutputFileName))
+	if err != nil {
+		fmt.Printf("读取verilator输出出错, %v\n", err)
+		handleFailure(f.CrashDir, realSubDir, verilatorLogFileName, err.Error())
+		return nil, err
+	}
+	verilatorOut := filepath.Join(realSubDir, "verilator_output.txt")
+	_ = os.WriteFile(verilatorOut, verilatorData, 0o644)
+	return verilatorData, nil
+}
+
+func (f *Fuzzer) RunYosysOptAndSim(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, []byte, error) {
+	optFileName := filepath.Join(realSubDir, "opt.v")
+	yosysOptFile := filepath.Join(realSubDir, "yosys_opt.log")
+
+	logFile, err := os.Create(yosysOptFile)
+	if err != nil {
+		fmt.Println("创建 yosys_opt 日志失败:", err)
+		return nil, nil, err
+	}
+	defer logFile.Close()
+
+	var stderrBuffer bytes.Buffer
+	cmd := exec.Command("yosys", "-p", "read_verilog test.v; opt; proc; write_verilog opt.v")
+	cmd.Dir = realSubDir
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, realSubDir, yosysOptFile, stderrBuffer.String()+err.Error())
+		return nil, nil, err
+	}
+
+	// 运行未优化版本
+	dataNoOpt, err := f.RunIVerilog(inputData, generator, realSubDir, tmpFileName, tbFileName)
+	if err != nil {
+		return nil, nil, err
+	}
+	noOptOutPath := filepath.Join(realSubDir, "iverilog_output_noOpt.txt")
+	_ = os.WriteFile(noOptOutPath, dataNoOpt, 0o644)
+
+	// 运行优化后的版本
+	optIVerilogDir := filepath.Join(realSubDir, "iverilog_opt")
+	if err := os.MkdirAll(optIVerilogDir, 0755); err != nil {
+		fmt.Println("创建 iverilog_opt 目录失败:", err)
+		return dataNoOpt, nil, err
+	}
+
+	aoutPath := filepath.Join(optIVerilogDir, "a.out")
+	args := []string{optFileName, tbFileName, "-o", aoutPath}
+	cmd = exec.Command("iverilog", args...)
+	cmd.Env = append(os.Environ(), "ASAN_OPTIONS=detect_leaks=0")
+	cmd.Dir = realSubDir
+
+	optLogFile := filepath.Join(realSubDir, GetRandomFileName("iverilog_opt_", ".log", ""))
+	logFile, err = os.Create(optLogFile)
+	if err != nil {
+		fmt.Println("创建 iverilog_opt 日志失败:", err)
+		return dataNoOpt, nil, err
+	}
+	defer logFile.Close()
+
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	stderrBuffer.Reset()
+
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, realSubDir, optLogFile, stderrBuffer.String()+err.Error())
+		return dataNoOpt, nil, err
+	}
+
+	testbenchInputPath := filepath.Join(optIVerilogDir, generator.TestBenchInputFileName)
+	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
+		fmt.Println("写入 testbench 输入文件失败:", err)
+		return dataNoOpt, nil, err
+	}
+
+	cmd = exec.Command("./a.out")
+	cmd.Env = append(os.Environ(), "ASAN_OPTIONS=detect_leaks=0")
+	cmd.Dir = optIVerilogDir
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	stderrBuffer.Reset()
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, realSubDir, optLogFile, stderrBuffer.String()+err.Error())
+		return dataNoOpt, nil, err
+	}
+
+	dataOpt, err := os.ReadFile(filepath.Join(optIVerilogDir, generator.TestBenchOutputFileName))
+	if err != nil {
+		fmt.Println("读取iverilog_opt输出出错:", err)
+		handleFailure(f.CrashDir, realSubDir, optLogFile, err.Error())
+		return dataNoOpt, nil, err
+	}
+	optOutPath := filepath.Join(realSubDir, "iverilog_output_Opt.txt")
+	_ = os.WriteFile(optOutPath, dataOpt, 0o644)
+
+	return dataNoOpt, dataOpt, nil
+}
+
+func (f *Fuzzer) RunIVerilog(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
+	iverilogDir := filepath.Join(realSubDir, "iverilog")
+	if err := os.MkdirAll(iverilogDir, 0755); err != nil {
+		fmt.Println("创建 iverilog 目录失败:", err)
+		return nil, err
+	}
+
+	aoutPath := filepath.Join(iverilogDir, "a.out")
+	args := []string{tmpFileName, tbFileName, "-o", aoutPath}
+	cmd := exec.Command("iverilog", args...)
+	cmd.Env = append(os.Environ(), "ASAN_OPTIONS=detect_leaks=0")
+	cmd.Dir = realSubDir
+
+	iverilogLogFileName := filepath.Join(realSubDir, GetRandomFileName("iverilog", ".log", ""))
+	logFile, err := os.Create(iverilogLogFileName)
+	defer logFile.Close()
+	if err != nil {
+		fmt.Println("创建 iverilog 日志失败:", err)
+		return nil, err
+	}
+	var stderrBuffer bytes.Buffer
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, iverilogLogFileName, stderrBuffer.String(), err.Error())
+		return nil, err
+	}
+
+	// 执行 Icarus 仿真
+	testbenchInputPath := filepath.Join(iverilogDir, generator.TestBenchInputFileName)
+	if err := os.WriteFile(testbenchInputPath, []byte(inputData), 0644); err != nil {
+		fmt.Println("写入 testbench 输入文件失败:", err)
+		return nil, err
+	}
+	cmd = exec.Command("./a.out")
+	cmd.Env = append(os.Environ(), "ASAN_OPTIONS=detect_leaks=0")
+	cmd.Dir = iverilogDir
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	stderrBuffer.Reset()
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, iverilogLogFileName, stderrBuffer.String(), err.Error())
+		return nil, err
+	}
+
+	iverilogData, err := os.ReadFile(filepath.Join(iverilogDir, generator.TestBenchOutputFileName))
+	if err != nil {
+		fmt.Println("读取iverilog输出出错:", err)
+		handleFailure(f.CrashDir, realSubDir, iverilogLogFileName, err.Error())
+		return nil, err
+	}
+
+	iverilogOut := filepath.Join(realSubDir, "iverilog_output.txt")
+	_ = os.WriteFile(iverilogOut, iverilogData, 0o644)
+	return iverilogData, nil
+}
+
+func (f *Fuzzer) RunCXXRTL(inputData string, generator *CodeGenerator.ExpressionGenerator, realSubDir, tmpFileName, tbFileName string) ([]byte, error) {
+	//printDirTree(realSubDir)
+	//_ = os.Remove(generator.TestBenchOutputFileName)
+	// 1. 创建 cxxrtl 工作目录
+
+	cxxrtlLog := filepath.Join(realSubDir, GetRandomFileName("cxxrtl", ".log", ""))
+
+	logFile, err := os.Create(cxxrtlLog)
+	defer logFile.Close()
+	if err != nil {
+		fmt.Println("创建 cxxrtl 日志失败:", err)
+		return nil, err
+	}
+
+	var cxxrtlStderr bytes.Buffer
+
+	// 3. 编译 CXXRTL 生成的 main.cpp
+	compileCmd := "clang++ -w -g -O3 -std=c++14 " +
+		"-I $(yosys-config --datdir)/include/backends/cxxrtl/runtime " +
+		"main.cpp -o cxxsim"
+	// 需要 shell 来展开 $(yosys-config ...)
+	build := exec.Command("bash", "-c", compileCmd)
+	build.Dir = realSubDir
+	build.Stdout = logFile
+	build.Stderr = &cxxrtlStderr
+	cxxrtlStderr.Reset()
+
+	if err := build.Run(); err != nil {
+		fmt.Println("cxxrtl编译失败")
+		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
+		return nil, err
+	}
+
+	// 4. 把 testbench 输入文件复制到 cxxrtl 目录
+	tbInputPath := filepath.Join(realSubDir, generator.TestBenchInputFileName)
+	if err := os.WriteFile(tbInputPath, []byte(inputData), 0o644); err != nil {
+		fmt.Println("写入 CXXRTL testbench 输入失败:", err)
+		return nil, err
+	}
+
+	// 5. 运行 CXXRTL 仿真
+	sim := exec.Command("./cxxsim")
+	sim.Dir = realSubDir
+	sim.Stdout = logFile
+	sim.Stderr = &cxxrtlStderr
+	cxxrtlStderr.Reset()
+
+	if err := sim.Run(); err != nil {
+		fmt.Println("cxxrtl运行失败")
+		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, cxxrtlStderr.String())
+		return nil, err
+	}
+
+	// 6. 读取 CXXRTL 输出
+	cxxrtlData, err := os.ReadFile(filepath.Join(realSubDir, "output.txt"))
+	if err != nil {
+		fmt.Println("读取 CXXRTL 输出出错:", err)
+		handleFailure(f.CrashDir, realSubDir, cxxrtlLog, err.Error())
+		return nil, err
+	}
+	//printDirTree(realSubDir)
+	//_ = os.Remove(generator.TestBenchOutputFileName)
+	/* ---------- 三方结果一致性比较 ---------- */
+
+	cxxrtlOut := filepath.Join(realSubDir, "cxxrtl_output.txt")
+	_ = os.WriteFile(cxxrtlOut, cxxrtlData, 0o644)
+	return cxxrtlData, nil
+}
+
+func (f *Fuzzer) RunYosysOpt(realSubDir, OptFileName string) error {
+	var stderrBuffer bytes.Buffer
+	yosysOptFile := filepath.Join(realSubDir, "yosys_opt.log")
+	logFile, err := os.Create(yosysOptFile)
+	if err != nil {
+		fmt.Println("创建 yosys_opt 日志失败:", err)
+		return err
+	}
+	cmd := exec.Command("yosys", "-p", "read_verilog test.v; opt; proc; write_verilog opt.v")
+	cmd.Dir = realSubDir
+	cmd.Stdout = logFile
+	cmd.Stderr = &stderrBuffer
+	if err := cmd.Run(); err != nil {
+		handleFailure(f.CrashDir, realSubDir, yosysOptFile, stderrBuffer.String()+err.Error())
+		return err
+	}
+
+	optFileContent, err := os.ReadFile(OptFileName)
+	if err != nil {
+		fmt.Println("读取 opt.v 出错:", err)
+		return err
+	}
+	newContent := []byte("`timescale 1ns/1ps\n")
+	newContent = append(newContent, optFileContent...)
+	if err := os.WriteFile(OptFileName, newContent, 0644); err != nil {
+		fmt.Println("写回 opt.v 出错:", err)
+		return err
+	}
+	return nil
+}
+
+var countIverilog int64 = 0
+var countVerilator int64 = 0
+var countYosysOpt int64 = 0
+var countCXXRTL int64 = 0
+
+var outputFile = "task_counter.txt"
+
+func StartCounterLogger(outputFile string) {
+	startTimestamp := time.Now().Unix() // 起始时间戳（秒）
+
+	go func() {
+		for {
+			time.Sleep(30 * time.Second)
+
+			currentTime := time.Now().Format("2006-01-02 15:04:05")
+			currentTimestamp := time.Now().Unix()
+			elapsed := currentTimestamp - startTimestamp
+
+			iverilog := atomic.LoadInt64(&countIverilog)
+			verilator := atomic.LoadInt64(&countVerilator)
+			yosys := atomic.LoadInt64(&countYosysOpt)
+			cxxrtl := atomic.LoadInt64(&countCXXRTL)
+
+			line := fmt.Sprintf("[%s] Icarus=%d Verilator=%d YosysOpt=%d CXXRTL=%d Elapsed=%ds\n",
+				currentTime, iverilog, verilator, yosys, cxxrtl, elapsed)
+
+			f, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err == nil {
+				defer f.Close()
+				f.WriteString(line)
+			}
+		}
+	}()
+}
+
+func EqualFuzzIverilog(workersPerType, equalNumber int) {
+	fuzzerIcarus := &Fuzzer{StartTime: time.Now().UnixMilli()}
+	fuzzerIcarus.Init()
+	tasks := make(chan struct{})
+	for i := 0; i < workersPerType; i++ {
+		go func() {
+			for range tasks {
+				fuzzerIcarus.TestEqualModulesIcarus(equalNumber)
+				atomic.AddInt64(&countIverilog, int64(equalNumber))
+			}
+		}()
+	}
+	for {
+		tasks <- struct{}{}
+	}
+}
+
+func EqualFuzzVerilator(workersPerType, equalNumber int) {
+	fuzzerVerilator := &Fuzzer{StartTime: time.Now().UnixMilli()}
+	fuzzerVerilator.Init()
+	tasks := make(chan struct{})
+	for i := 0; i < workersPerType; i++ {
+		go func() {
+			for range tasks {
+				fuzzerVerilator.TestEqualModulesVerilator(equalNumber)
+				atomic.AddInt64(&countVerilator, int64(equalNumber))
+			}
+		}()
+	}
+	for {
+		tasks <- struct{}{}
+	}
+}
+
+func EqualFuzzYosysOpt(workersPerType, equalNumber int) {
+
+	fuzzerYosysOpt := &Fuzzer{StartTime: time.Now().UnixMilli()}
+	fuzzerYosysOpt.Init()
+
+	tasks := make(chan struct{})
+	for i := 0; i < workersPerType; i++ {
+		go func() {
+			for range tasks {
+				fuzzerYosysOpt.TestEqualModulesYosysOpt(equalNumber)
+				atomic.AddInt64(&countYosysOpt, int64(equalNumber))
+			}
+		}()
+	}
+	for {
+		tasks <- struct{}{}
+	}
+}
+
+func EqualFuzzCXXRTL(workersPerType, equalNumber int) {
+	fuzzerCXXRTL := &Fuzzer{StartTime: time.Now().UnixMilli()}
+	fuzzerCXXRTL.Init()
+
+	tasks := make(chan struct{})
+	for i := 0; i < workersPerType; i++ {
+		go func() {
+			for range tasks {
+				fuzzerCXXRTL.TestEqualModulesCXXRTL(equalNumber)
+				atomic.AddInt64(&countCXXRTL, int64(equalNumber))
+			}
+		}()
+	}
+	for {
+		tasks <- struct{}{}
+	}
+}
+
+func TestAllEquivalence() {
+	StartCounterLogger("cxxrtl_verilator_task_counter.txt") // 每30秒写入一次任务总数
+
+	//go EqualFuzzIverilog(50, 10)
+	go EqualFuzzVerilator(50, 10)
+	//go EqualFuzzYosysOpt(30, 10)
+	go EqualFuzzCXXRTL(50, 10)
+
+	select {} // 阻塞主线程
 }

@@ -587,7 +587,7 @@ func (g *ExpressionGenerator) GenerateLoopFreeModule() string {
 }
 
 // GenerateLoopFreeEquivalentModules 生成多个等价的完整无环路模块
-func (g *ExpressionGenerator) GenerateLoopFreeEquivalentModules(equalNumber int) []string {
+func (g *ExpressionGenerator) GenerateLoopFreeEquivalentModules(equalNumber int) string {
 	// 清空并初始化变量
 	g.Clear()
 	isInput := make(map[*Variable]struct{})
@@ -668,6 +668,7 @@ func (g *ExpressionGenerator) GenerateLoopFreeEquivalentModules(equalNumber int)
 	for i, _ := range assignExpressions {
 		assignExpressions[i].GetBitWidth()
 		assignExpressions[i].GetSignedness()
+		assignExpressions[i].PropagateType(0, false)
 	}
 
 	alwaysStr := ""
@@ -750,7 +751,13 @@ func (g *ExpressionGenerator) GenerateLoopFreeEquivalentModules(equalNumber int)
 		modules = append(modules, moduleStr)
 	}
 
-	return modules
+	var combinedModule strings.Builder
+	for _, module := range modules {
+		combinedModule.WriteString(module)
+		combinedModule.WriteString("\n\n")
+	}
+
+	return combinedModule.String()
 }
 
 func (g *ExpressionGenerator) GenerateTb() string {
@@ -939,6 +946,151 @@ func genAllOnesHex(n int) string {
 	ones.Sub(ones, big.NewInt(1))
 
 	return fmt.Sprintf("0x%x", ones)
+}
+
+func (g *ExpressionGenerator) GenerateCXXRTLMultiModuleTestBench(equalNumber int) string {
+	valueIdx := 0
+	inStr := ""
+	initStr := ""
+	modDecl := ""
+	initMods := ""
+
+	// 声明模块变量并初始化
+	for i := 0; i < equalNumber; i++ {
+		modDecl += fmt.Sprintf("std::unique_ptr<p_top__eq%d> mod%d;\n", i, i)
+		initMods += fmt.Sprintf("mod%d = std::make_unique<p_top__eq%d>();\n", i, i)
+	}
+
+	// 输入变量赋值
+	for i := 0; i < len(g.InputPortVars); i++ {
+		v := g.InputPortVars[i]
+		width := 1
+		if v.hasRange {
+			width = v.Range.GetWidth()
+		}
+		for j := 0; j < equalNumber; j++ {
+			inStr += fmt.Sprintf("mod%d->p_in%d  = cxxrtl::value<%d>(values[%d]);\n", j, i, width, valueIdx)
+			initStr += fmt.Sprintf("mod%d->p_in%d  = cxxrtl::value<%d>(0u);\n", j, i, width)
+		}
+		valueIdx++
+	}
+
+	// 时钟变量赋值
+	for i := 0; i < len(g.ClockVars); i++ {
+		v := g.ClockVars[i]
+		width := 1
+		if v.hasRange {
+			width = v.Range.GetWidth()
+		}
+		for j := 0; j < equalNumber; j++ {
+			inStr += fmt.Sprintf("mod%d->p_clock__%d = cxxrtl::value<%d>(values[%d]);\n", j, i, width, valueIdx)
+			initStr += fmt.Sprintf("mod%d->p_clock__%d = cxxrtl::value<%d>(0u);\n", j, i, width)
+		}
+		valueIdx++
+	}
+
+	// 输出一致性比较
+	compareStr := ""
+	if len(g.OutputVars) > 0 {
+		out := g.OutputVars[0]
+		width := 1
+		if out.hasRange {
+			width = out.Range.GetWidth()
+		}
+		if out.isSigned {
+			for i := 1; i < equalNumber; i++ {
+				compareStr += fmt.Sprintf("if (truncate_signed(mod0->p_out0) != truncate_signed(mod%d->p_out0)) {\n", i)
+				compareStr += "    std::cerr << \"Mismatch at line \" << line_num << std::endl;\n"
+				compareStr += "    return 1;\n}\n"
+			}
+		} else {
+			mask := genAllOnesHex(width)
+			for i := 1; i < equalNumber; i++ {
+				compareStr += fmt.Sprintf("if ((mod0->p_out0.get<uint32_t>() & %s) != (mod%d->p_out0.get<uint32_t>() & %s)) {\n",
+					mask, i, mask)
+				compareStr += "    std::cerr << \"NO\" << std::endl;\n"
+				compareStr += "    return 1;\n}\n"
+			}
+		}
+	}
+
+	// include 所有模块的 cpp 文件
+	includeStr := ""
+	for i := 0; i < equalNumber; i++ {
+		includeStr += fmt.Sprintf("#include \"test%d.cpp\"\n", i)
+	}
+
+	// 所有模块执行 step()
+	stepStr := ""
+	for i := 0; i < equalNumber; i++ {
+		stepStr += fmt.Sprintf("mod%d->step();\n", i)
+	}
+
+	// 最终拼接测试文件内容
+	tbStr := fmt.Sprintf(`%s
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <string>
+
+using namespace std;
+using namespace cxxrtl_design;
+
+template <std::size_t N>
+int32_t truncate_signed(cxxrtl::value<N> val) {
+	int32_t raw = val.template get<int32_t>();
+	return (raw << (32 - N)) >> (32 - N);
+}
+
+std::vector<uint32_t> parse_line(const std::string &line) {
+	std::stringstream ss(line);
+	std::vector<uint32_t> values;
+	uint32_t val;
+	while (ss >> val) {
+		values.push_back(val);
+	}
+	return values;
+}
+
+int main() {
+%s
+
+%s
+
+	std::ofstream ofs("output.txt");
+	std::ifstream infile("input.txt");
+	if (!infile) {
+		std::cerr << "Cannot open input.txt" << std::endl;
+		return 1;
+	}
+
+	std::string line;
+	int line_num = 0;
+
+%s
+
+%s
+
+%s // warmup
+
+	while (std::getline(infile, line)) {
+		line_num++;
+		auto values = parse_line(line);
+
+%s
+
+%s
+
+%s
+	}
+
+	std::cout << "All outputs matched." << std::endl;
+	return 0;
+}
+`, includeStr, modDecl, initMods, initStr, stepStr, stepStr, inStr, stepStr, compareStr)
+
+	return tbStr
 }
 
 func (g *ExpressionGenerator) GenerateCXXRTLTestBench() string {
@@ -1138,7 +1290,7 @@ func (g *ExpressionGenerator) generateConcatenationExpression(depth int) Express
 
 	for i := 0; i < numExprs; i++ {
 		// 20%的概率生成重复拼接表达式
-		if rand.Float64() < 0.2 {
+		if rand.Float64() < -1 {
 			// 生成重复次数(1-8)
 			count := rand.Intn(8) + 1
 			countExpr := &NumberExpression{
@@ -1363,4 +1515,270 @@ func (g *ExpressionGenerator) GenerateCXXRTLEquivalenceCheck(equalNumber int) st
 	tb += "    }\n    return 0;\n}\n"
 
 	return tb
+}
+
+func (g *ExpressionGenerator) GenerateEquivalentModulesWithOneTop(equalNumber int) string {
+	// 清空并初始化变量
+	g.Clear()
+	isInput := make(map[*Variable]struct{})
+	isOutput := make(map[*Variable]struct{})
+
+	// 生成输入变量
+	for i := 0; i < g.InputNums; i++ {
+		varName := fmt.Sprintf("in%d", i)
+		variable := g.AddWireVariable(varName)
+		g.CurrentDefinedVars = append(g.CurrentDefinedVars, variable)
+		g.InputVars = append(g.InputVars, variable)
+		g.InputPortVars = append(g.InputPortVars, variable)
+		isInput[variable] = struct{}{}
+	}
+
+	// 生成时钟变量
+	for i := 0; i < g.ClockNums; i++ {
+		varName := fmt.Sprintf("clock_%d", i)
+		variable := g.AddVariableNotArray(varName, VarTypeWire)
+		g.InputVars = append(g.InputVars, variable)
+		g.ClockVars = append(g.ClockVars, variable)
+		isInput[variable] = struct{}{}
+	}
+
+	// 生成输出变量
+	for i := 0; i < g.OutputNums; i++ {
+		varName := fmt.Sprintf("out%d", i)
+		variable := g.AddWireVariable(varName)
+		g.OutputVars = append(g.OutputVars, variable)
+		isOutput[variable] = struct{}{}
+	}
+
+	// 生成初始 assign 表达式（未做等价变换）
+	assignExpressions := make([]*AssignExpression, 0)
+	for i := 0; i < g.AssignCount; i++ {
+		assignExpressions = append(assignExpressions, g.GenerateLoopFreeAssignment(nil))
+	}
+	for _, assign := range assignExpressions {
+		g.CurrentDefinedVars = append(g.CurrentDefinedVars, assign.Operand1)
+	}
+
+	// 生成 always 块
+	alwaysBlocks := make([]*AlwaysBlock, 0)
+	randomPick := func(slice []*Variable, count int) []*Variable {
+		indices := rand.Perm(len(slice))[:count]
+		result := make([]*Variable, count)
+		for i, idx := range indices {
+			result[i] = slice[idx]
+		}
+		return result
+	}
+	for i := 0; i < g.AlwaysCount; i++ {
+		alwaysClocks := randomPick(g.ClockVars, 2)
+		alwaysBlocks = append(alwaysBlocks, RandomAlwaysBlockWithTargets(g, alwaysClocks, g.MaxDepth, g.MaxWidth))
+	}
+
+	// 统一输出表达式
+	outputVar := g.OutputVars[0]
+	outputStr := fmt.Sprintf("    assign %s = ", outputVar.Name)
+	flag := false
+	for _, v := range g.CurrentDefinedVars {
+		if _, ok := isInput[v]; ok {
+			continue
+		}
+		if flag {
+			outputStr += fmt.Sprintf("+ %s ", v.Name)
+		} else {
+			outputStr += fmt.Sprintf("%s ", v.Name)
+			flag = true
+		}
+	}
+	outputStr += ";\n"
+	g.CurrentDefinedVars = append(g.CurrentDefinedVars, outputVar)
+
+	// 每个等价版本的模块都保存在这个切片中
+	modules := make([]string, 0, equalNumber)
+	moduleNames := make([]string, 0, equalNumber)
+
+	for i, _ := range assignExpressions {
+		assignExpressions[i].GetBitWidth()
+		assignExpressions[i].GetSignedness()
+		assignExpressions[i].PropagateType(0, false)
+	}
+
+	alwaysStr := ""
+	for _, v := range alwaysBlocks {
+		alwaysStr += v.GenerateString() + "\n"
+	}
+
+	for eqIdx := 0; eqIdx < equalNumber; eqIdx++ {
+		// 对 assign 表达式做等价变换
+		if eqIdx > 0 {
+			g.ApplyEquivalenceTransforms(assignExpressions)
+		}
+		moduleName := fmt.Sprintf("%s_eq%d", g.Name, eqIdx)
+		moduleNames = append(moduleNames, moduleName)
+		// 模块声明头
+		moduleStr := ""
+		moduleStr += fmt.Sprintf("module %s_eq%d (", g.Name, eqIdx)
+
+		for i, input := range g.InputVars {
+			moduleStr += input.GetName()
+			if i != len(g.InputVars)-1 || len(g.OutputVars) > 0 {
+				moduleStr += ", "
+			}
+		}
+		for i, output := range g.OutputVars {
+			moduleStr += output.GetName()
+			if i != len(g.OutputVars)-1 {
+				moduleStr += ", "
+			}
+		}
+		moduleStr += ");\n\n"
+
+		// 端口声明
+		for _, v := range g.CurrentDefinedVars {
+			signedStr := ""
+			if v.isSigned {
+				signedStr = "signed"
+			}
+			var decl string
+			if v.Type == VarTypeWire {
+				if v.hasRange {
+					decl = fmt.Sprintf("wire %s [%d:%d] %s;\n", signedStr, v.Range.r, v.Range.l, v.GetName())
+				} else {
+					decl = fmt.Sprintf("wire %s %s;\n", signedStr, v.GetName())
+				}
+			} else if v.Type == VarTypeReg {
+				if v.hasRange {
+					decl = fmt.Sprintf("reg %s [%d:%d] %s;\n", signedStr, v.Range.r, v.Range.l, v.GetName())
+				} else {
+					decl = fmt.Sprintf("reg %s %s;\n", signedStr, v.GetName())
+				}
+			}
+			if _, ok := isInput[v]; ok {
+				decl = "input " + decl
+			} else if _, ok := isOutput[v]; ok {
+				decl = "output " + decl
+			}
+			moduleStr += decl
+		}
+
+		for _, clk := range g.ClockVars {
+			moduleStr += fmt.Sprintf("input %s;\n", clk.GetName())
+			moduleStr += fmt.Sprintf("wire %s;\n", clk.GetName())
+		}
+
+		moduleStr += "\n"
+
+		// assign 表达式部分
+		for _, assign := range assignExpressions {
+			moduleStr += assign.GenerateString() + "\n"
+		}
+		moduleStr += outputStr
+
+		// always 块
+		moduleStr += alwaysStr
+
+		moduleStr += "endmodule\n"
+		modules = append(modules, moduleStr)
+	}
+
+	// 构建顶层模块
+	var topBuilder strings.Builder
+	topBuilder.WriteString("`timescale 1ns/1ps\nmodule top(\n")
+	for i, input := range g.InputVars {
+		topBuilder.WriteString(input.GetName())
+		if i != len(g.InputVars)-1 || len(g.OutputVars) > 0 {
+			topBuilder.WriteString(", ")
+		}
+	}
+	for i, output := range g.OutputVars {
+		topBuilder.WriteString(output.GetName())
+		if i != len(g.OutputVars)-1 {
+			topBuilder.WriteString(", ")
+		}
+	}
+	topBuilder.WriteString(");\n\n")
+	// 端口声明
+	for _, v := range g.CurrentDefinedVars {
+		signedStr := ""
+		if v.isSigned {
+			signedStr = "signed"
+		}
+		var decl string
+		if v.Type == VarTypeWire {
+			if v.hasRange {
+				decl = fmt.Sprintf("wire %s [%d:%d] %s;\n", signedStr, v.Range.r, v.Range.l, v.GetName())
+			} else {
+				decl = fmt.Sprintf("wire %s %s;\n", signedStr, v.GetName())
+			}
+		} else if v.Type == VarTypeReg {
+			if v.hasRange {
+				decl = fmt.Sprintf("reg %s [%d:%d] %s;\n", signedStr, v.Range.r, v.Range.l, v.GetName())
+			} else {
+				decl = fmt.Sprintf("reg %s %s;\n", signedStr, v.GetName())
+			}
+		}
+		if _, ok := isInput[v]; ok {
+			decl = "input " + decl
+		} else {
+			continue
+		}
+		topBuilder.WriteString(decl)
+	}
+
+	for _, clk := range g.ClockVars {
+		topBuilder.WriteString(fmt.Sprintf("input %s;\n", clk.GetName()))
+		topBuilder.WriteString(fmt.Sprintf("wire %s;\n", clk.GetName()))
+	}
+	// 定义每个实例模块的输出 wire
+	for i := 0; i < equalNumber; i++ {
+		v := outputVar
+		var decl string
+		signedStr := ""
+		if v.isSigned {
+			signedStr = "signed"
+		}
+		if v.hasRange {
+			decl = fmt.Sprintf("wire %s [%d:%d] %s_%d;\n", signedStr, v.Range.r, v.Range.l, v.GetName(), i)
+		} else {
+			decl = fmt.Sprintf("wire %s %s_%d;\n", signedStr, v.GetName(), i)
+		}
+		topBuilder.WriteString(decl)
+	}
+	topBuilder.WriteString("    output wire out0;\n")
+
+	// 实例化每个模块
+	for i := 0; i < equalNumber; i++ {
+		moduleName := moduleNames[i]
+		topBuilder.WriteString(fmt.Sprintf("%s inst_eq%d (\n", moduleName, i))
+		for _, v := range g.InputVars {
+			topBuilder.WriteString(fmt.Sprintf("    .%s(%s),\n", v.GetName(), v.GetName()))
+		}
+		for _, clk := range g.ClockVars {
+			topBuilder.WriteString(fmt.Sprintf("    .%s(%s),\n", clk.GetName(), clk.GetName()))
+		}
+		topBuilder.WriteString(fmt.Sprintf("    .%s(%s_%d)\n", outputVar.GetName(), outputVar.GetName(), i))
+		topBuilder.WriteString(");\n\n")
+	}
+
+	// 比较输出是否全部一致
+	if equalNumber > 1 {
+		compareExpr := fmt.Sprintf("assign out0 = (%s_0 == %s_1)", outputVar.GetName(), outputVar.GetName())
+		for i := 2; i < equalNumber; i++ {
+			compareExpr += fmt.Sprintf(" && (%s_0 == %s_%d)", outputVar.GetName(), outputVar.GetName(), i)
+		}
+		compareExpr += ";\n"
+		topBuilder.WriteString(compareExpr)
+	} else {
+		topBuilder.WriteString("assign out0 = 1'b1;\n")
+	}
+
+	topBuilder.WriteString("endmodule\n\n")
+
+	// 拼接完整 Verilog 文件
+	var finalBuilder strings.Builder
+	finalBuilder.WriteString(topBuilder.String())
+	for _, mod := range modules {
+		finalBuilder.WriteString(mod)
+		finalBuilder.WriteString("\n\n")
+	}
+	return finalBuilder.String()
 }

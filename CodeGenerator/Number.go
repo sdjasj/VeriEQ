@@ -34,19 +34,31 @@ func (c ConstNumber) ToVerilogLiteral() string {
 	return fmt.Sprintf("%d'%sb%s", c.BitWidth, sign, binary)
 }
 
-// RandomConstNumber generates a random ConstNumber with 1–34 bit width
+// RandomConstNumber generates a random ConstNumber with 1–34 bit width and non-zero value
 func RandomConstNumber() ConstNumber {
 	bitWidth := rand.Intn(34) + 1 // 1 to 34 bits
-	signed := rand.Intn(2) == 0   // true for signed, false for unsigned
+	signed := false               // true for signed, false for unsigned
 
 	var value uint64
 	if signed {
 		max := int64(1) << (bitWidth - 1)
-		rangeVal := rand.Int63n(2 * max)
-		value = uint64(rangeVal - max)
+		for {
+			rangeVal := rand.Int63n(2 * max)
+			v := int64(rangeVal - max)
+			if v != 0 {
+				value = uint64(v)
+				break
+			}
+		}
 	} else {
 		max := uint64(1) << bitWidth
-		value = rand.Uint64() % max
+		for {
+			v := rand.Uint64() % max
+			if v != 0 {
+				value = v
+				break
+			}
+		}
 	}
 
 	return ConstNumber{
@@ -56,7 +68,7 @@ func RandomConstNumber() ConstNumber {
 	}
 }
 
-// RandomConstNumberWithBitWidth generates a random ConstNumber with a specific bit width
+// RandomConstNumberWithBitWidth generates a random ConstNumber with specific bit width and non-zero value
 func RandomConstNumberWithBitWidth(bitWidth int, signed bool) ConstNumber {
 	if bitWidth <= 0 || bitWidth > 34 {
 		panic("bitWidth must be between 1 and 34")
@@ -65,11 +77,23 @@ func RandomConstNumberWithBitWidth(bitWidth int, signed bool) ConstNumber {
 	var value uint64
 	if signed {
 		max := int64(1) << (bitWidth - 1)
-		rangeVal := rand.Int63n(2 * max)
-		value = uint64(rangeVal - max)
+		for {
+			rangeVal := rand.Int63n(2 * max)
+			v := int64(rangeVal - max)
+			if v != 0 {
+				value = uint64(v)
+				break
+			}
+		}
 	} else {
 		maxv := uint64(1) << bitWidth
-		value = rand.Uint64() % maxv
+		for {
+			v := rand.Uint64() % maxv
+			if v != 0 {
+				value = v
+				break
+			}
+		}
 	}
 
 	return ConstNumber{
