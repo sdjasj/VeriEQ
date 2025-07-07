@@ -1,0 +1,638 @@
+Verismith 03:02:02 fuzz_1 - Sampling Verilog from generator
+Verismith 03:02:02 fuzz_1 - Using first seed
+Verismith 03:02:02 fuzz_1 - Chose Seed 11595350909918766749 17443445590062263091
+Verismith 03:02:02 fuzz_1 - Generated Verilog (0.235881152s)
+Verismith 03:02:02 fuzz_1 - ### Starting Synthesis ###
+Verismith 03:02:02 fuzz_1 - Running synthesis with identity
+Verismith 03:02:02 fuzz_1 - Finished synthesis with identity (0.009734673s,Pass ())
+Verismith 03:02:02 fuzz_1 - Running synthesis with yosys
+Verismith 03:03:17 fuzz_1 - Finished synthesis with yosys (75.220996618s,Pass ())
+Verismith 03:03:17 fuzz_1 - Running synthesis with vivado
+Verismith 03:03:17 fuzz_1 - Finished synthesis with vivado (0.010811502s,Fail SynthFail)
+[(0.009734673s,Pass ()),(75.220996618s,Pass ()),(0.010811502s,Fail SynthFail)]
+Verismith 03:03:17 fuzz_1 - ### Finished Synthesis (75.24188288s) ###
+Verismith 03:03:17 fuzz_1 - ### Starting Equivalence Check ###
+Verismith 03:03:17 fuzz_1 - Running equivalence check for identity and yosys
+Verismith 03:03:17 fuzz_1 - Finished equivalence check for identity and yosys (0.145552227s,Fail EquivError)
+[(0.145552227s,Fail EquivError)]
+Verismith 03:03:17 fuzz_1 - ### Finished Equivalence Check (0.145704648s) ###
+Verismith 03:03:17 fuzz_1 - ### Starting Simulation ###
+Verismith 03:03:17 fuzz_1 - Running simulation for identity
+Verismith 03:03:18 fuzz_1 - Finished simulation for identity (0.871070197s,Pass "\194\SYN9i6%B\182")
+Verismith 03:03:18 fuzz_1 - Running simulation for identity
+Verismith 03:03:19 fuzz_1 - Finished simulation for identity (0.789277709s,Pass "\194\SYN9i6%B\182")
+Verismith 03:03:19 fuzz_1 - Running simulation for yosys
+Verismith 03:03:25 fuzz_1 - Finished simulation for yosys (6.251702473s,Pass "\194\SYN9i6%B\182")
+[Pass "c216396936",Pass "c216396936",Pass "c216396936"]
+Verismith 03:03:25 fuzz_1 - ### Finished Simulation (7.914132385s) ###
+Verismith 03:03:25 fuzz_1 - ### Starting Reduction ###
+Reducing Modules (modules: 8, module items: 453, loc: 1767)
+Reducing Modules (modules: 4, module items: 224, loc: 756)
+Reducing Modules (modules: 2, module items: 110, loc: 346)
+Reducing Modules (modules: 1, module items: 57, loc: 138)
+Reducing Module items (top) (modules: 1, module items: 57, loc: 138)
+Reducing Module items (top) (modules: 1, module items: 48, loc: 86)
+Reducing Module items (top) (modules: 1, module items: 44, loc: 79)
+Reducing Module items (top) (modules: 1, module items: 42, loc: 77)
+Reducing Module items (top) (modules: 1, module items: 41, loc: 75)
+Reducing Statements (top) (modules: 1, module items: 41, loc: 75)
+Reducing Remove constants in concat (modules: 1, module items: 41, loc: 75)
+Reducing Remove constants in concat (modules: 1, module items: 41, loc: 43)
+Reducing Cleaning (modules: 1, module items: 41, loc: 43)
+Reducing Cleaning (modules: 1, module items: 5, loc: 7)
+Verismith 03:03:25 fuzz_1 - ### Finished Reduction (0.108919341s) ###
+Verismith 03:03:25 fuzz_2 - Sampling Verilog from generator
+Verismith 03:03:25 fuzz_2 - Using first seed
+Verismith 03:03:26 fuzz_2 - Chose Seed 9618700108691678094 7214622346232514469
+Verismith 03:03:26 fuzz_2 - Generated Verilog (0.090455673s)
+Verismith 03:03:26 fuzz_2 - ### Starting Synthesis ###
+Verismith 03:03:26 fuzz_2 - Running synthesis with identity
+Verismith 03:03:26 fuzz_2 - Finished synthesis with identity (0.00562811s,Pass ())
+Verismith 03:03:26 fuzz_2 - Running synthesis with yosys
+Verismith 03:04:06 fuzz_2 - Finished synthesis with yosys (40.495481469s,Pass ())
+Verismith 03:04:06 fuzz_2 - Running synthesis with vivado
+Verismith 03:04:06 fuzz_2 - Finished synthesis with vivado (0.009359304s,Fail SynthFail)
+[(0.00562811s,Pass ()),(40.495481469s,Pass ()),(0.009359304s,Fail SynthFail)]
+Verismith 03:04:06 fuzz_2 - ### Finished Synthesis (40.511257561s) ###
+Verismith 03:04:06 fuzz_2 - ### Starting Equivalence Check ###
+Verismith 03:04:06 fuzz_2 - Running equivalence check for identity and yosys
+Verismith 03:04:06 fuzz_2 - Finished equivalence check for identity and yosys (0.078853434s,Fail EquivError)
+[(0.078853434s,Fail EquivError)]
+Verismith 03:04:06 fuzz_2 - ### Finished Equivalence Check (0.079070993s) ###
+Verismith 03:04:06 fuzz_2 - ### Starting Simulation ###
+Verismith 03:04:06 fuzz_2 - Running simulation for identity
+Verismith 03:04:07 fuzz_2 - Finished simulation for identity (0.527452963s,Pass "\212T\170\213z!f6")
+Verismith 03:04:07 fuzz_2 - Running simulation for identity
+Verismith 03:04:07 fuzz_2 - Finished simulation for identity (0.523638769s,Pass "\212T\170\213z!f6")
+Verismith 03:04:07 fuzz_2 - Running simulation for yosys
+Verismith 03:04:13 fuzz_2 - Finished simulation for yosys (5.284490286s,Pass "\212T\170\213z!f6")
+[Pass "d454aad57a",Pass "d454aad57a",Pass "d454aad57a"]
+Verismith 03:04:13 fuzz_2 - ### Finished Simulation (6.337232585s) ###
+Verismith 03:04:13 fuzz_2 - ### Starting Reduction ###
+Reducing Modules (modules: 5, module items: 220, loc: 734)
+Reducing Modules (modules: 3, module items: 83, loc: 162)
+Reducing Modules (modules: 2, module items: 52, loc: 99)
+Reducing Modules (modules: 1, module items: 28, loc: 59)
+Reducing Module items (top) (modules: 1, module items: 28, loc: 59)
+Reducing Module items (top) (modules: 1, module items: 23, loc: 49)
+Reducing Module items (top) (modules: 1, module items: 21, loc: 43)
+Reducing Module items (top) (modules: 1, module items: 20, loc: 38)
+Reducing Statements (top) (modules: 1, module items: 20, loc: 38)
+Reducing Remove constants in concat (modules: 1, module items: 20, loc: 38)
+Reducing Remove constants in concat (modules: 1, module items: 20, loc: 27)
+Reducing Cleaning (modules: 1, module items: 20, loc: 27)
+Reducing Cleaning (modules: 1, module items: 9, loc: 14)
+Verismith 03:04:13 fuzz_2 - ### Finished Reduction (0.094455176s) ###
+Verismith 03:04:13 fuzz_3 - Sampling Verilog from generator
+Verismith 03:04:13 fuzz_3 - Using first seed
+Verismith 03:04:13 fuzz_3 - Chose Seed 6846730176059019252 16554595620503909203
+Verismith 03:04:13 fuzz_3 - Generated Verilog (0.042648396s)
+Verismith 03:04:13 fuzz_3 - ### Starting Synthesis ###
+Verismith 03:04:13 fuzz_3 - Running synthesis with identity
+Verismith 03:04:13 fuzz_3 - Finished synthesis with identity (0.002380036s,Pass ())
+Verismith 03:04:13 fuzz_3 - Running synthesis with yosys
+Verismith 03:04:29 fuzz_3 - Finished synthesis with yosys (15.900279338s,Pass ())
+Verismith 03:04:29 fuzz_3 - Running synthesis with vivado
+Verismith 03:04:29 fuzz_3 - Finished synthesis with vivado (0.008643405s,Fail SynthFail)
+[(0.002380036s,Pass ()),(15.900279338s,Pass ()),(0.008643405s,Fail SynthFail)]
+Verismith 03:04:29 fuzz_3 - ### Finished Synthesis (15.911693049s) ###
+Verismith 03:04:29 fuzz_3 - ### Starting Equivalence Check ###
+Verismith 03:04:29 fuzz_3 - Running equivalence check for identity and yosys
+Verismith 03:04:29 fuzz_3 - Finished equivalence check for identity and yosys (0.026616923s,Fail EquivError)
+[(0.026616923s,Fail EquivError)]
+Verismith 03:04:29 fuzz_3 - ### Finished Equivalence Check (0.026738073s) ###
+Verismith 03:04:29 fuzz_3 - ### Starting Simulation ###
+Verismith 03:04:29 fuzz_3 - Running simulation for identity
+Verismith 03:04:29 fuzz_3 - Finished simulation for identity (0.516006442s,Pass "[\210g\252\DEL\v\168|")
+Verismith 03:04:29 fuzz_3 - Running simulation for identity
+Verismith 03:04:30 fuzz_3 - Finished simulation for identity (0.467802125s,Pass "[\210g\252\DEL\v\168|")
+Verismith 03:04:30 fuzz_3 - Running simulation for yosys
+Verismith 03:04:32 fuzz_3 - Finished simulation for yosys (2.277263366s,Pass "[\210g\252\DEL\v\168|")
+[Pass "5bd267fc7f",Pass "5bd267fc7f",Pass "5bd267fc7f"]
+Verismith 03:04:32 fuzz_3 - ### Finished Simulation (3.263150919s) ###
+Verismith 03:04:32 fuzz_3 - ### Starting Reduction ###
+Reducing Modules (modules: 3, module items: 137, loc: 432)
+Reducing Modules (modules: 2, module items: 82, loc: 244)
+Reducing Modules (modules: 1, module items: 36, loc: 154)
+Reducing Module items (top) (modules: 1, module items: 36, loc: 154)
+Reducing Module items (top) (modules: 1, module items: 33, loc: 151)
+Reducing Module items (top) (modules: 1, module items: 31, loc: 59)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 59)
+Reducing Remove constants in concat (modules: 1, module items: 31, loc: 59)
+Reducing Remove constants in concat (modules: 1, module items: 31, loc: 37)
+Reducing Cleaning (modules: 1, module items: 31, loc: 37)
+Reducing Cleaning (modules: 1, module items: 9, loc: 13)
+Verismith 03:04:32 fuzz_3 - ### Finished Reduction (0.066870953s) ###
+Verismith 03:04:32 fuzz_4 - Sampling Verilog from generator
+Verismith 03:04:32 fuzz_4 - Using first seed
+Verismith 03:04:32 fuzz_4 - Chose Seed 995922876149953266 6689179870008539181
+Verismith 03:04:32 fuzz_4 - Generated Verilog (0.169520565s)
+Verismith 03:04:32 fuzz_4 - ### Starting Synthesis ###
+Verismith 03:04:32 fuzz_4 - Running synthesis with identity
+Verismith 03:04:32 fuzz_4 - Finished synthesis with identity (0.007887146s,Pass ())
+Verismith 03:04:32 fuzz_4 - Running synthesis with yosys
+Verismith 03:05:34 fuzz_4 - Finished synthesis with yosys (61.607401438s,Pass ())
+Verismith 03:05:34 fuzz_4 - Running synthesis with vivado
+Verismith 03:05:34 fuzz_4 - Finished synthesis with vivado (0.010271061s,Fail SynthFail)
+[(0.007887146s,Pass ()),(61.607401438s,Pass ()),(0.010271061s,Fail SynthFail)]
+Verismith 03:05:34 fuzz_4 - ### Finished Synthesis (61.625924556s) ###
+Verismith 03:05:34 fuzz_4 - ### Starting Equivalence Check ###
+Verismith 03:05:34 fuzz_4 - Running equivalence check for identity and yosys
+Verismith 03:05:34 fuzz_4 - Finished equivalence check for identity and yosys (0.069598298s,Fail EquivError)
+[(0.069598298s,Fail EquivError)]
+Verismith 03:05:34 fuzz_4 - ### Finished Equivalence Check (0.069751739s) ###
+Verismith 03:05:34 fuzz_4 - ### Starting Simulation ###
+Verismith 03:05:34 fuzz_4 - Running simulation for identity
+Verismith 03:05:34 fuzz_4 - Finished simulation for identity (0.680640262s,Pass "\143\v\191\SOH\141 r~")
+Verismith 03:05:34 fuzz_4 - Running simulation for identity
+Verismith 03:05:35 fuzz_4 - Finished simulation for identity (0.68181837s,Pass "\143\v\191\SOH\141 r~")
+Verismith 03:05:35 fuzz_4 - Running simulation for yosys
+Verismith 03:05:40 fuzz_4 - Finished simulation for yosys (5.013193166s,Pass "\143\v\191\SOH\141 r~")
+[Pass "8f0bbf018d",Pass "8f0bbf018d",Pass "8f0bbf018d"]
+Verismith 03:05:40 fuzz_4 - ### Finished Simulation (6.377898915s) ###
+Verismith 03:05:40 fuzz_4 - ### Starting Reduction ###
+Reducing Modules (modules: 7, module items: 322, loc: 1328)
+Reducing Modules (modules: 4, module items: 176, loc: 764)
+Reducing Modules (modules: 2, module items: 63, loc: 229)
+Reducing Modules (modules: 1, module items: 36, loc: 181)
+Reducing Module items (top) (modules: 1, module items: 36, loc: 181)
+Reducing Module items (top) (modules: 1, module items: 33, loc: 168)
+Reducing Module items (top) (modules: 1, module items: 31, loc: 166)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 166)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 110)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 81)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 74)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 65)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 64)
+Reducing Statements (top) (modules: 1, module items: 31, loc: 63)
+Reducing Remove constants in concat (modules: 1, module items: 31, loc: 63)
+Reducing Remove constants in concat (modules: 1, module items: 31, loc: 40)
+Reducing Cleaning (modules: 1, module items: 31, loc: 40)
+Reducing Cleaning (modules: 1, module items: 3, loc: 9)
+Verismith 03:05:40 fuzz_4 - ### Finished Reduction (0.142262931s) ###
+Verismith 03:05:40 fuzz_5 - Sampling Verilog from generator
+Verismith 03:05:40 fuzz_5 - Using first seed
+Verismith 03:05:40 fuzz_5 - Chose Seed 11723827987630783615 2078262134247396643
+Verismith 03:05:40 fuzz_5 - Generated Verilog (0.124941353s)
+Verismith 03:05:40 fuzz_5 - ### Starting Synthesis ###
+Verismith 03:05:40 fuzz_5 - Running synthesis with identity
+Verismith 03:05:40 fuzz_5 - Finished synthesis with identity (0.006439358s,Pass ())
+Verismith 03:05:40 fuzz_5 - Running synthesis with yosys
+Verismith 03:06:14 fuzz_5 - Finished synthesis with yosys (33.423369252s,Pass ())
+Verismith 03:06:14 fuzz_5 - Running synthesis with vivado
+Verismith 03:06:14 fuzz_5 - Finished synthesis with vivado (0.015596763s,Fail SynthFail)
+[(0.006439358s,Pass ()),(33.423369252s,Pass ()),(0.015596763s,Fail SynthFail)]
+Verismith 03:06:14 fuzz_5 - ### Finished Synthesis (33.445833592s) ###
+Verismith 03:06:14 fuzz_5 - ### Starting Equivalence Check ###
+Verismith 03:06:14 fuzz_5 - Running equivalence check for identity and yosys
+Verismith 03:06:14 fuzz_5 - Finished equivalence check for identity and yosys (0.094226276s,Fail EquivError)
+[(0.094226276s,Fail EquivError)]
+Verismith 03:06:14 fuzz_5 - ### Finished Equivalence Check (0.094412485s) ###
+Verismith 03:06:14 fuzz_5 - ### Starting Simulation ###
+Verismith 03:06:14 fuzz_5 - Running simulation for identity
+Verismith 03:06:15 fuzz_5 - Finished simulation for identity (0.563408917s,Pass " 5\ESC\DC3\200\195\196a")
+Verismith 03:06:15 fuzz_5 - Running simulation for identity
+Verismith 03:06:15 fuzz_5 - Finished simulation for identity (0.534275537s,Pass " 5\ESC\DC3\200\195\196a")
+Verismith 03:06:15 fuzz_5 - Running simulation for yosys
+Verismith 03:06:18 fuzz_5 - Finished simulation for yosys (3.09854468s,Pass " 5\ESC\DC3\200\195\196a")
+[Pass "20351b13c8",Pass "20351b13c8",Pass "20351b13c8"]
+Verismith 03:06:18 fuzz_5 - ### Finished Simulation (4.1976702s) ###
+Verismith 03:06:18 fuzz_5 - ### Starting Reduction ###
+Reducing Modules (modules: 6, module items: 231, loc: 804)
+Reducing Modules (modules: 3, module items: 107, loc: 347)
+Reducing Modules (modules: 2, module items: 68, loc: 230)
+Reducing Modules (modules: 1, module items: 28, loc: 52)
+Reducing Module items (top) (modules: 1, module items: 28, loc: 52)
+Reducing Module items (top) (modules: 1, module items: 23, loc: 40)
+Reducing Module items (top) (modules: 1, module items: 21, loc: 38)
+Reducing Module items (top) (modules: 1, module items: 20, loc: 33)
+Reducing Statements (top) (modules: 1, module items: 20, loc: 33)
+Reducing Remove constants in concat (modules: 1, module items: 20, loc: 33)
+Reducing Remove constants in concat (modules: 1, module items: 20, loc: 22)
+Reducing Cleaning (modules: 1, module items: 20, loc: 22)
+Reducing Cleaning (modules: 1, module items: 5, loc: 7)
+Verismith 03:06:18 fuzz_5 - ### Finished Reduction (0.107423713s) ###
+Verismith 03:06:18 fuzz_6 - Sampling Verilog from generator
+Verismith 03:06:18 fuzz_6 - Using first seed
+Verismith 03:06:18 fuzz_6 - Chose Seed 7509537757812801262 9085311424068774977
+Verismith 03:06:18 fuzz_6 - Generated Verilog (0.16573385s)
+Verismith 03:06:18 fuzz_6 - ### Starting Synthesis ###
+Verismith 03:06:18 fuzz_6 - Running synthesis with identity
+Verismith 03:06:18 fuzz_6 - Finished synthesis with identity (0.008101906s,Pass ())
+Verismith 03:06:18 fuzz_6 - Running synthesis with yosys
+Verismith 03:07:17 fuzz_6 - Finished synthesis with yosys (58.474405833s,Pass ())
+Verismith 03:07:17 fuzz_6 - Running synthesis with vivado
+Verismith 03:07:17 fuzz_6 - Finished synthesis with vivado (0.011859238s,Fail SynthFail)
+[(0.008101906s,Pass ()),(58.474405833s,Pass ()),(0.011859238s,Fail SynthFail)]
+Verismith 03:07:17 fuzz_6 - ### Finished Synthesis (58.494842826s) ###
+Verismith 03:07:17 fuzz_6 - ### Starting Equivalence Check ###
+Verismith 03:07:17 fuzz_6 - Running equivalence check for identity and yosys
+Verismith 03:07:17 fuzz_6 - Finished equivalence check for identity and yosys (0.09653267s,Fail EquivError)
+[(0.09653267s,Fail EquivError)]
+Verismith 03:07:17 fuzz_6 - ### Finished Equivalence Check (0.096726199s) ###
+Verismith 03:07:17 fuzz_6 - ### Starting Simulation ###
+Verismith 03:07:17 fuzz_6 - Running simulation for identity
+Verismith 03:07:18 fuzz_6 - Finished simulation for identity (0.688169857s,Pass "\f\ETB\199\192\237\147\204\216")
+Verismith 03:07:18 fuzz_6 - Running simulation for identity
+Verismith 03:07:18 fuzz_6 - Finished simulation for identity (0.673719532s,Pass "\f\ETB\199\192\237\147\204\216")
+Verismith 03:07:18 fuzz_6 - Running simulation for yosys
+Verismith 03:07:24 fuzz_6 - Finished simulation for yosys (5.26562182s,Pass "\f\ETB\199\192\237\147\204\216")
+[Pass "0c17c7c0ed",Pass "0c17c7c0ed",Pass "0c17c7c0ed"]
+Verismith 03:07:24 fuzz_6 - ### Finished Simulation (6.630259053s) ###
+Verismith 03:07:24 fuzz_6 - ### Starting Reduction ###
+Reducing Modules (modules: 6, module items: 371, loc: 1420)
+Reducing Modules (modules: 3, module items: 152, loc: 490)
+Reducing Modules (modules: 2, module items: 133, loc: 464)
+Reducing Modules (modules: 1, module items: 58, loc: 145)
+Reducing Module items (top) (modules: 1, module items: 58, loc: 145)
+Reducing Module items (top) (modules: 1, module items: 48, loc: 128)
+Reducing Module items (top) (modules: 1, module items: 43, loc: 122)
+Reducing Module items (top) (modules: 1, module items: 41, loc: 120)
+Reducing Module items (top) (modules: 1, module items: 40, loc: 119)
+Reducing Statements (top) (modules: 1, module items: 40, loc: 119)
+Reducing Statements (top) (modules: 1, module items: 40, loc: 76)
+Reducing Statements (top) (modules: 1, module items: 40, loc: 76)
+Reducing Remove constants in concat (modules: 1, module items: 40, loc: 76)
+Reducing Remove constants in concat (modules: 1, module items: 40, loc: 44)
+Reducing Cleaning (modules: 1, module items: 40, loc: 44)
+Reducing Cleaning (modules: 1, module items: 3, loc: 5)
+Verismith 03:07:24 fuzz_6 - ### Finished Reduction (0.127215006s) ###
+Verismith 03:07:24 fuzz_7 - Sampling Verilog from generator
+Verismith 03:07:24 fuzz_7 - Using first seed
+Verismith 03:07:24 fuzz_7 - Chose Seed 15563014616599550944 6425034252027475245
+Verismith 03:07:24 fuzz_7 - Generated Verilog (0.001323168s)
+Verismith 03:07:24 fuzz_7 - ### Starting Synthesis ###
+Verismith 03:07:24 fuzz_7 - Running synthesis with identity
+Verismith 03:07:24 fuzz_7 - Finished synthesis with identity (0.000314219s,Pass ())
+Verismith 03:07:24 fuzz_7 - Running synthesis with yosys
+Verismith 03:07:25 fuzz_7 - Finished synthesis with yosys (1.406741389s,Pass ())
+Verismith 03:07:25 fuzz_7 - Running synthesis with vivado
+Verismith 03:07:25 fuzz_7 - Finished synthesis with vivado (0.00551501s,Fail SynthFail)
+[(0.000314219s,Pass ()),(1.406741389s,Pass ()),(0.00551501s,Fail SynthFail)]
+Verismith 03:07:25 fuzz_7 - ### Finished Synthesis (1.412843828s) ###
+Verismith 03:07:25 fuzz_7 - ### Starting Equivalence Check ###
+Verismith 03:07:25 fuzz_7 - Running equivalence check for identity and yosys
+Verismith 03:07:25 fuzz_7 - Finished equivalence check for identity and yosys (0.00583785s,Fail EquivError)
+[(0.00583785s,Fail EquivError)]
+Verismith 03:07:25 fuzz_7 - ### Finished Equivalence Check (0.00592275s) ###
+Verismith 03:07:25 fuzz_7 - ### Starting Simulation ###
+Verismith 03:07:25 fuzz_7 - Running simulation for identity
+Verismith 03:07:26 fuzz_7 - Finished simulation for identity (0.326753958s,Pass "\DEL\169\154\163\178vJU")
+Verismith 03:07:26 fuzz_7 - Running simulation for identity
+Verismith 03:07:26 fuzz_7 - Finished simulation for identity (0.336806541s,Pass "\DEL\169\154\163\178vJU")
+Verismith 03:07:26 fuzz_7 - Running simulation for yosys
+Verismith 03:07:26 fuzz_7 - Finished simulation for yosys (0.411086121s,Pass "\DEL\169\154\163\178vJU")
+[Pass "7fa99aa3b2",Pass "7fa99aa3b2",Pass "7fa99aa3b2"]
+Verismith 03:07:26 fuzz_7 - ### Finished Simulation (1.075411858s) ###
+Verismith 03:07:26 fuzz_7 - ### Starting Reduction ###
+Reducing Modules (modules: 1, module items: 15, loc: 23)
+Reducing Module items (top) (modules: 1, module items: 15, loc: 23)
+Reducing Module items (top) (modules: 1, module items: 13, loc: 21)
+Reducing Module items (top) (modules: 1, module items: 12, loc: 20)
+Reducing Statements (top) (modules: 1, module items: 12, loc: 20)
+Reducing Remove constants in concat (modules: 1, module items: 12, loc: 20)
+Reducing Remove constants in concat (modules: 1, module items: 12, loc: 20)
+Reducing Cleaning (modules: 1, module items: 12, loc: 20)
+Reducing Cleaning (modules: 1, module items: 8, loc: 16)
+Verismith 03:07:26 fuzz_7 - ### Finished Reduction (0.048690235s) ###
+Verismith 03:07:26 fuzz_8 - Sampling Verilog from generator
+Verismith 03:07:26 fuzz_8 - Using first seed
+Verismith 03:07:27 fuzz_8 - Chose Seed 8372420359346454441 2683556733435870531
+Verismith 03:07:27 fuzz_8 - Generated Verilog (0.164660032s)
+Verismith 03:07:27 fuzz_8 - ### Starting Synthesis ###
+Verismith 03:07:27 fuzz_8 - Running synthesis with identity
+Verismith 03:07:27 fuzz_8 - Finished synthesis with identity (0.009075665s,Pass ())
+Verismith 03:07:27 fuzz_8 - Running synthesis with yosys
+Verismith 03:08:18 fuzz_8 - Finished synthesis with yosys (51.455727795s,Pass ())
+Verismith 03:08:18 fuzz_8 - Running synthesis with vivado
+Verismith 03:08:18 fuzz_8 - Finished synthesis with vivado (0.015180213s,Fail SynthFail)
+[(0.009075665s,Pass ()),(51.455727795s,Pass ()),(0.015180213s,Fail SynthFail)]
+Verismith 03:08:18 fuzz_8 - ### Finished Synthesis (51.480333503s) ###
+Verismith 03:08:18 fuzz_8 - ### Starting Equivalence Check ###
+Verismith 03:08:18 fuzz_8 - Running equivalence check for identity and yosys
+Verismith 03:08:18 fuzz_8 - Finished equivalence check for identity and yosys (0.116806525s,Fail EquivError)
+[(0.116806525s,Fail EquivError)]
+Verismith 03:08:18 fuzz_8 - ### Finished Equivalence Check (0.116962936s) ###
+Verismith 03:08:18 fuzz_8 - ### Starting Simulation ###
+Verismith 03:08:18 fuzz_8 - Running simulation for identity
+Verismith 03:08:19 fuzz_8 - Finished simulation for identity (0.659597244s,Pass "\SYN\243\r{S\NAK\138\SI")
+Verismith 03:08:19 fuzz_8 - Running simulation for identity
+Verismith 03:08:20 fuzz_8 - Finished simulation for identity (0.739125937s,Pass "\SYN\243\r{S\NAK\138\SI")
+Verismith 03:08:20 fuzz_8 - Running simulation for yosys
+Verismith 03:08:24 fuzz_8 - Finished simulation for yosys (4.275399532s,Pass "\SYN\243\r{S\NAK\138\SI")
+[Pass "16f30d7b53",Pass "16f30d7b53",Pass "16f30d7b53"]
+Verismith 03:08:24 fuzz_8 - ### Finished Simulation (5.675626999s) ###
+Verismith 03:08:24 fuzz_8 - ### Starting Reduction ###
+Reducing Modules (modules: 7, module items: 400, loc: 1376)
+Reducing Modules (modules: 4, module items: 271, loc: 1062)
+Reducing Modules (modules: 2, module items: 92, loc: 274)
+Reducing Modules (modules: 1, module items: 39, loc: 82)
+Reducing Module items (top) (modules: 1, module items: 39, loc: 82)
+Reducing Module items (top) (modules: 1, module items: 32, loc: 71)
+Reducing Module items (top) (modules: 1, module items: 28, loc: 55)
+Reducing Module items (top) (modules: 1, module items: 26, loc: 52)
+Reducing Statements (top) (modules: 1, module items: 26, loc: 52)
+Reducing Remove constants in concat (modules: 1, module items: 26, loc: 52)
+Reducing Remove constants in concat (modules: 1, module items: 26, loc: 34)
+Reducing Cleaning (modules: 1, module items: 26, loc: 34)
+Reducing Cleaning (modules: 1, module items: 8, loc: 13)
+Verismith 03:08:24 fuzz_8 - ### Finished Reduction (0.134470905s) ###
+Verismith 03:08:24 fuzz_9 - Sampling Verilog from generator
+Verismith 03:08:24 fuzz_9 - Using first seed
+Verismith 03:08:24 fuzz_9 - Chose Seed 17615068732170230125 10194032686494730537
+Verismith 03:08:24 fuzz_9 - Generated Verilog (0.144465516s)
+Verismith 03:08:24 fuzz_9 - ### Starting Synthesis ###
+Verismith 03:08:24 fuzz_9 - Running synthesis with identity
+Verismith 03:08:24 fuzz_9 - Finished synthesis with identity (0.005995201s,Pass ())
+Verismith 03:08:24 fuzz_9 - Running synthesis with yosys
+Verismith 03:09:05 fuzz_9 - Finished synthesis with yosys (40.524820888s,Pass ())
+Verismith 03:09:05 fuzz_9 - Running synthesis with vivado
+Verismith 03:09:05 fuzz_9 - Finished synthesis with vivado (0.011682699s,Fail SynthFail)
+[(0.005995201s,Pass ()),(40.524820888s,Pass ()),(0.011682699s,Fail SynthFail)]
+Verismith 03:09:05 fuzz_9 - ### Finished Synthesis (40.542908366s) ###
+Verismith 03:09:05 fuzz_9 - ### Starting Equivalence Check ###
+Verismith 03:09:05 fuzz_9 - Running equivalence check for identity and yosys
+Verismith 03:09:05 fuzz_9 - Finished equivalence check for identity and yosys (0.090627771s,Fail EquivError)
+[(0.090627771s,Fail EquivError)]
+Verismith 03:09:05 fuzz_9 - ### Finished Equivalence Check (0.090781871s) ###
+Verismith 03:09:05 fuzz_9 - ### Starting Simulation ###
+Verismith 03:09:05 fuzz_9 - Running simulation for identity
+Verismith 03:09:05 fuzz_9 - Finished simulation for identity (0.669990555s,Pass "Wl\DEL\211\134)\203\205")
+Verismith 03:09:05 fuzz_9 - Running simulation for identity
+Verismith 03:09:06 fuzz_9 - Finished simulation for identity (0.833138689s,Pass "Wl\DEL\211\134)\203\205")
+Verismith 03:09:06 fuzz_9 - Running simulation for yosys
+Verismith 03:09:10 fuzz_9 - Finished simulation for yosys (4.15308457s,Pass "Wl\DEL\211\134)\203\205")
+[Pass "576c7fd386",Pass "576c7fd386",Pass "576c7fd386"]
+Verismith 03:09:10 fuzz_9 - ### Finished Simulation (5.659521398s) ###
+Verismith 03:09:10 fuzz_9 - ### Starting Reduction ###
+Reducing Modules (modules: 7, module items: 348, loc: 1107)
+Reducing Modules (modules: 4, module items: 232, loc: 750)
+Reducing Modules (modules: 2, module items: 113, loc: 394)
+Reducing Modules (modules: 1, module items: 81, loc: 287)
+Reducing Module items (top) (modules: 1, module items: 81, loc: 287)
+Reducing Module items (top) (modules: 1, module items: 71, loc: 132)
+Reducing Module items (top) (modules: 1, module items: 66, loc: 121)
+Reducing Module items (top) (modules: 1, module items: 63, loc: 118)
+Reducing Module items (top) (modules: 1, module items: 62, loc: 117)
+Reducing Statements (top) (modules: 1, module items: 62, loc: 117)
+Reducing Remove constants in concat (modules: 1, module items: 62, loc: 117)
+Reducing Remove constants in concat (modules: 1, module items: 62, loc: 64)
+Reducing Cleaning (modules: 1, module items: 62, loc: 64)
+Reducing Cleaning (modules: 1, module items: 5, loc: 7)
+Verismith 03:09:11 fuzz_9 - ### Finished Reduction (0.136831809s) ###
+Verismith 03:09:11 fuzz_10 - Sampling Verilog from generator
+Verismith 03:09:11 fuzz_10 - Using first seed
+Verismith 03:09:11 fuzz_10 - Chose Seed 9696330965001276133 10191600609051188807
+Verismith 03:09:11 fuzz_10 - Generated Verilog (0.115183779s)
+Verismith 03:09:11 fuzz_10 - ### Starting Synthesis ###
+Verismith 03:09:11 fuzz_10 - Running synthesis with identity
+Verismith 03:09:11 fuzz_10 - Finished synthesis with identity (0.007461907s,Pass ())
+Verismith 03:09:11 fuzz_10 - Running synthesis with yosys
+Verismith 03:09:53 fuzz_10 - Finished synthesis with yosys (42.638070819s,Pass ())
+Verismith 03:09:53 fuzz_10 - Running synthesis with vivado
+Verismith 03:09:53 fuzz_10 - Finished synthesis with vivado (0.012966617s,Fail SynthFail)
+[(0.007461907s,Pass ()),(42.638070819s,Pass ()),(0.012966617s,Fail SynthFail)]
+Verismith 03:09:53 fuzz_10 - ### Finished Synthesis (42.658868844s) ###
+Verismith 03:09:53 fuzz_10 - ### Starting Equivalence Check ###
+Verismith 03:09:53 fuzz_10 - Running equivalence check for identity and yosys
+Verismith 03:09:53 fuzz_10 - Finished equivalence check for identity and yosys (0.078940851s,Fail EquivError)
+[(0.078940851s,Fail EquivError)]
+Verismith 03:09:53 fuzz_10 - ### Finished Equivalence Check (0.079079582s) ###
+Verismith 03:09:53 fuzz_10 - ### Starting Simulation ###
+Verismith 03:09:53 fuzz_10 - Running simulation for identity
+Verismith 03:09:54 fuzz_10 - Finished simulation for identity (0.583535706s,Pass "\210\166\DC2\138TS!\209")
+Verismith 03:09:54 fuzz_10 - Running simulation for identity
+Verismith 03:09:55 fuzz_10 - Finished simulation for identity (0.603676121s,Pass "\210\166\DC2\138TS!\209")
+Verismith 03:09:55 fuzz_10 - Running simulation for yosys
+Verismith 03:10:00 fuzz_10 - Finished simulation for yosys (5.360451375s,Pass "\210\166\DC2\138TS!\209")
+[Pass "d2a6128a54",Pass "d2a6128a54",Pass "d2a6128a54"]
+Verismith 03:10:00 fuzz_10 - ### Finished Simulation (6.552147194s) ###
+Verismith 03:10:00 fuzz_10 - ### Starting Reduction ###
+Reducing Modules (modules: 6, module items: 306, loc: 1040)
+Reducing Modules (modules: 3, module items: 142, loc: 608)
+Reducing Modules (modules: 2, module items: 119, loc: 534)
+Reducing Modules (modules: 1, module items: 101, loc: 511)
+Reducing Module items (top) (modules: 1, module items: 101, loc: 511)
+Reducing Module items (top) (modules: 1, module items: 93, loc: 425)
+Reducing Module items (top) (modules: 1, module items: 89, loc: 342)
+Reducing Module items (top) (modules: 1, module items: 87, loc: 340)
+Reducing Module items (top) (modules: 1, module items: 86, loc: 299)
+Reducing Statements (top) (modules: 1, module items: 86, loc: 299)
+Reducing Statements (top) (modules: 1, module items: 86, loc: 295)
+Reducing Statements (top) (modules: 1, module items: 86, loc: 221)
+Reducing Statements (top) (modules: 1, module items: 86, loc: 197)
+Reducing Statements (top) (modules: 1, module items: 86, loc: 178)
+Reducing Statements (top) (modules: 1, module items: 86, loc: 173)
+Reducing Statements (top) (modules: 1, module items: 86, loc: 169)
+Reducing Remove constants in concat (modules: 1, module items: 86, loc: 169)
+Reducing Remove constants in concat (modules: 1, module items: 86, loc: 91)
+Reducing Cleaning (modules: 1, module items: 86, loc: 91)
+Reducing Cleaning (modules: 1, module items: 3, loc: 5)
+Verismith 03:10:00 fuzz_10 - ### Finished Reduction (0.211863908s) ###
+Verismith 03:10:00 fuzz_11 - Sampling Verilog from generator
+Verismith 03:10:00 fuzz_11 - Using first seed
+Verismith 03:10:00 fuzz_11 - Chose Seed 4472121713043886498 7364369668024988845
+Verismith 03:10:00 fuzz_11 - Generated Verilog (0.106676352s)
+Verismith 03:10:00 fuzz_11 - ### Starting Synthesis ###
+Verismith 03:10:00 fuzz_11 - Running synthesis with identity
+Verismith 03:10:00 fuzz_11 - Finished synthesis with identity (0.007003228s,Pass ())
+Verismith 03:10:00 fuzz_11 - Running synthesis with yosys
+Verismith 03:10:29 fuzz_11 - Finished synthesis with yosys (29.178116683s,Pass ())
+Verismith 03:10:29 fuzz_11 - Running synthesis with vivado
+Verismith 03:10:29 fuzz_11 - Finished synthesis with vivado (0.010482268s,Fail SynthFail)
+[(0.007003228s,Pass ()),(29.178116683s,Pass ()),(0.010482268s,Fail SynthFail)]
+Verismith 03:10:29 fuzz_11 - ### Finished Synthesis (29.196029437s) ###
+Verismith 03:10:29 fuzz_11 - ### Starting Equivalence Check ###
+Verismith 03:10:29 fuzz_11 - Running equivalence check for identity and yosys
+Verismith 03:10:30 fuzz_11 - Finished equivalence check for identity and yosys (0.061266405s,Fail EquivError)
+[(0.061266405s,Fail EquivError)]
+Verismith 03:10:30 fuzz_11 - ### Finished Equivalence Check (0.061422381s) ###
+Verismith 03:10:30 fuzz_11 - ### Starting Simulation ###
+Verismith 03:10:30 fuzz_11 - Running simulation for identity
+Verismith 03:10:30 fuzz_11 - Finished simulation for identity (0.589505017s,Pass "\ETX\221\218\166\190\t\DC1_")
+Verismith 03:10:30 fuzz_11 - Running simulation for identity
+Verismith 03:10:31 fuzz_11 - Finished simulation for identity (0.594914503s,Pass "\ETX\221\218\166\190\t\DC1_")
+Verismith 03:10:31 fuzz_11 - Running simulation for yosys
+Verismith 03:10:35 fuzz_11 - Finished simulation for yosys (3.820207582s,Pass "\ETX\221\218\166\190\t\DC1_")
+[Pass "03dddaa6be",Pass "03dddaa6be",Pass "03dddaa6be"]
+Verismith 03:10:35 fuzz_11 - ### Finished Simulation (5.005951514s) ###
+Verismith 03:10:35 fuzz_11 - ### Starting Reduction ###
+Reducing Modules (modules: 7, module items: 306, loc: 861)
+Reducing Modules (modules: 4, module items: 158, loc: 448)
+Reducing Modules (modules: 2, module items: 65, loc: 154)
+Reducing Modules (modules: 1, module items: 23, loc: 53)
+Reducing Module items (top) (modules: 1, module items: 23, loc: 53)
+Reducing Module items (top) (modules: 1, module items: 20, loc: 39)
+Reducing Module items (top) (modules: 1, module items: 19, loc: 33)
+Reducing Statements (top) (modules: 1, module items: 19, loc: 33)
+Reducing Remove constants in concat (modules: 1, module items: 19, loc: 33)
+Reducing Remove constants in concat (modules: 1, module items: 19, loc: 23)
+Reducing Cleaning (modules: 1, module items: 19, loc: 23)
+Reducing Cleaning (modules: 1, module items: 5, loc: 7)
+Verismith 03:10:35 fuzz_11 - ### Finished Reduction (0.091511942s) ###
+Verismith 03:10:35 fuzz_12 - Sampling Verilog from generator
+Verismith 03:10:35 fuzz_12 - Using first seed
+Verismith 03:10:35 fuzz_12 - Chose Seed 6974678966551718887 16241109879923041369
+Verismith 03:10:35 fuzz_12 - Generated Verilog (0.037694218s)
+Verismith 03:10:35 fuzz_12 - ### Starting Synthesis ###
+Verismith 03:10:35 fuzz_12 - Running synthesis with identity
+Verismith 03:10:35 fuzz_12 - Finished synthesis with identity (0.003765567s,Pass ())
+Verismith 03:10:35 fuzz_12 - Running synthesis with yosys
+Verismith 03:10:45 fuzz_12 - Finished synthesis with yosys (10.418804523s,Pass ())
+Verismith 03:10:45 fuzz_12 - Running synthesis with vivado
+Verismith 03:10:45 fuzz_12 - Finished synthesis with vivado (0.012093016s,Fail SynthFail)
+[(0.003765567s,Pass ()),(10.418804523s,Pass ()),(0.012093016s,Fail SynthFail)]
+Verismith 03:10:45 fuzz_12 - ### Finished Synthesis (10.435064529s) ###
+Verismith 03:10:45 fuzz_12 - ### Starting Equivalence Check ###
+Verismith 03:10:45 fuzz_12 - Running equivalence check for identity and yosys
+Verismith 03:10:45 fuzz_12 - Finished equivalence check for identity and yosys (0.007909541s,Fail EquivError)
+[(0.007909541s,Fail EquivError)]
+Verismith 03:10:45 fuzz_12 - ### Finished Equivalence Check (0.008004282s) ###
+Verismith 03:10:45 fuzz_12 - ### Starting Simulation ###
+Verismith 03:10:45 fuzz_12 - Running simulation for identity
+Verismith 03:10:46 fuzz_12 - Finished simulation for identity (0.445190133s,Pass "\t\a\166\246\236\207r\250")
+Verismith 03:10:46 fuzz_12 - Running simulation for identity
+Verismith 03:10:46 fuzz_12 - Finished simulation for identity (0.449772881s,Pass "\t\a\166\246\236\207r\250")
+Verismith 03:10:46 fuzz_12 - Running simulation for yosys
+Verismith 03:10:48 fuzz_12 - Finished simulation for yosys (1.533314113s,Pass "\t\a\166\246\236\207r\250")
+[Pass "0907a6f6ec",Pass "0907a6f6ec",Pass "0907a6f6ec"]
+Verismith 03:10:48 fuzz_12 - ### Finished Simulation (2.431350779s) ###
+Verismith 03:10:48 fuzz_12 - ### Starting Reduction ###
+Reducing Modules (modules: 1, module items: 78, loc: 315)
+Reducing Module items (top) (modules: 1, module items: 78, loc: 315)
+Reducing Module items (top) (modules: 1, module items: 68, loc: 221)
+Reducing Module items (top) (modules: 1, module items: 63, loc: 119)
+Reducing Module items (top) (modules: 1, module items: 61, loc: 117)
+Reducing Module items (top) (modules: 1, module items: 60, loc: 116)
+Reducing Statements (top) (modules: 1, module items: 60, loc: 116)
+Reducing Remove constants in concat (modules: 1, module items: 60, loc: 116)
+Reducing Remove constants in concat (modules: 1, module items: 60, loc: 64)
+Reducing Cleaning (modules: 1, module items: 60, loc: 64)
+Reducing Cleaning (modules: 1, module items: 5, loc: 7)
+Verismith 03:10:48 fuzz_12 - ### Finished Reduction (0.114008285s) ###
+Verismith 03:10:48 fuzz_13 - Sampling Verilog from generator
+Verismith 03:10:48 fuzz_13 - Using first seed
+Verismith 03:10:48 fuzz_13 - Chose Seed 11465896419673742158 14151337258305732671
+Verismith 03:10:48 fuzz_13 - Generated Verilog (0.281176506s)
+Verismith 03:10:48 fuzz_13 - ### Starting Synthesis ###
+Verismith 03:10:48 fuzz_13 - Running synthesis with identity
+Verismith 03:10:48 fuzz_13 - Finished synthesis with identity (0.015483457s,Pass ())
+Verismith 03:10:48 fuzz_13 - Running synthesis with yosys
+Verismith 03:12:12 fuzz_13 - Finished synthesis with yosys (84.213641038s,Pass ())
+Verismith 03:12:12 fuzz_13 - Running synthesis with vivado
+Verismith 03:12:12 fuzz_13 - Finished synthesis with vivado (0.015534593s,Fail SynthFail)
+[(0.015483457s,Pass ()),(84.213641038s,Pass ()),(0.015534593s,Fail SynthFail)]
+Verismith 03:12:12 fuzz_13 - ### Finished Synthesis (84.245128791s) ###
+Verismith 03:12:12 fuzz_13 - ### Starting Equivalence Check ###
+Verismith 03:12:12 fuzz_13 - Running equivalence check for identity and yosys
+Verismith 03:12:12 fuzz_13 - Finished equivalence check for identity and yosys (0.145916168s,Fail EquivError)
+[(0.145916168s,Fail EquivError)]
+Verismith 03:12:12 fuzz_13 - ### Finished Equivalence Check (0.146086182s) ###
+Verismith 03:12:12 fuzz_13 - ### Starting Simulation ###
+Verismith 03:12:12 fuzz_13 - Running simulation for identity
+Verismith 03:12:13 fuzz_13 - Finished simulation for identity (0.899044753s,Pass "kn[\DC3\222\207\SI\136")
+Verismith 03:12:13 fuzz_13 - Running simulation for identity
+Verismith 03:12:14 fuzz_13 - Finished simulation for identity (0.881428491s,Pass "kn[\DC3\222\207\SI\136")
+Verismith 03:12:14 fuzz_13 - Running simulation for yosys
+Verismith 03:12:24 fuzz_13 - Finished simulation for yosys (9.472255909s,Pass "kn[\DC3\222\207\SI\136")
+[Pass "6b6e5b13de",Pass "6b6e5b13de",Pass "6b6e5b13de"]
+Verismith 03:12:24 fuzz_13 - ### Finished Simulation (11.256994782s) ###
+Verismith 03:12:24 fuzz_13 - ### Starting Reduction ###
+Reducing Modules (modules: 8, module items: 530, loc: 2012)
+Reducing Modules (modules: 4, module items: 248, loc: 815)
+Reducing Modules (modules: 2, module items: 132, loc: 466)
+Reducing Modules (modules: 1, module items: 70, loc: 273)
+Reducing Module items (top) (modules: 1, module items: 70, loc: 273)
+Reducing Module items (top) (modules: 1, module items: 61, loc: 117)
+Reducing Module items (top) (modules: 1, module items: 57, loc: 110)
+Reducing Module items (top) (modules: 1, module items: 55, loc: 106)
+Reducing Module items (top) (modules: 1, module items: 54, loc: 105)
+Reducing Statements (top) (modules: 1, module items: 54, loc: 105)
+Reducing Remove constants in concat (modules: 1, module items: 54, loc: 105)
+Reducing Remove constants in concat (modules: 1, module items: 54, loc: 59)
+Reducing Cleaning (modules: 1, module items: 54, loc: 59)
+Reducing Cleaning (modules: 1, module items: 4, loc: 6)
+Verismith 03:12:24 fuzz_13 - ### Finished Reduction (0.183474831s) ###
+Verismith 03:12:24 fuzz_14 - Sampling Verilog from generator
+Verismith 03:12:24 fuzz_14 - Using first seed
+Verismith 03:12:24 fuzz_14 - Chose Seed 4648815972521313480 17535896708028392311
+Verismith 03:12:24 fuzz_14 - Generated Verilog (0.189807592s)
+Verismith 03:12:24 fuzz_14 - ### Starting Synthesis ###
+Verismith 03:12:24 fuzz_14 - Running synthesis with identity
+Verismith 03:12:24 fuzz_14 - Finished synthesis with identity (0.009630415s,Pass ())
+Verismith 03:12:24 fuzz_14 - Running synthesis with yosys
+Verismith 03:13:04 fuzz_14 - Finished synthesis with yosys (39.646902164s,Pass ())
+Verismith 03:13:04 fuzz_14 - Running synthesis with vivado
+Verismith 03:13:04 fuzz_14 - Finished synthesis with vivado (0.010498179s,Fail SynthFail)
+[(0.009630415s,Pass ()),(39.646902164s,Pass ()),(0.010498179s,Fail SynthFail)]
+Verismith 03:13:04 fuzz_14 - ### Finished Synthesis (39.667448657s) ###
+Verismith 03:13:04 fuzz_14 - ### Starting Equivalence Check ###
+Verismith 03:13:04 fuzz_14 - Running equivalence check for identity and yosys
+Verismith 03:13:04 fuzz_14 - Finished equivalence check for identity and yosys (0.071765118s,Fail EquivError)
+[(0.071765118s,Fail EquivError)]
+Verismith 03:13:04 fuzz_14 - ### Finished Equivalence Check (0.07187086s) ###
+Verismith 03:13:04 fuzz_14 - ### Starting Simulation ###
+Verismith 03:13:04 fuzz_14 - Running simulation for identity
+Verismith 03:13:04 fuzz_14 - Finished simulation for identity (0.610013347s,Pass "\ETBXJ\234\218\164\b#")
+Verismith 03:13:04 fuzz_14 - Running simulation for identity
+Verismith 03:13:05 fuzz_14 - Finished simulation for identity (0.641791738s,Pass "\ETBXJ\234\218\164\b#")
+Verismith 03:13:05 fuzz_14 - Running simulation for yosys
+Verismith 03:13:11 fuzz_14 - Finished simulation for yosys (5.719658618s,Pass "\ETBXJ\234\218\164\b#")
+[Pass "17584aeada",Pass "17584aeada",Pass "17584aeada"]
+Verismith 03:13:11 fuzz_14 - ### Finished Simulation (6.97388057s) ###
+Verismith 03:13:11 fuzz_14 - ### Starting Reduction ###
+Reducing Modules (modules: 5, module items: 276, loc: 1122)
+Reducing Modules (modules: 3, module items: 148, loc: 596)
+Reducing Modules (modules: 2, module items: 116, loc: 486)
+Reducing Modules (modules: 1, module items: 69, loc: 246)
+Reducing Module items (top) (modules: 1, module items: 69, loc: 246)
+Reducing Module items (top) (modules: 1, module items: 59, loc: 191)
+Reducing Module items (top) (modules: 1, module items: 54, loc: 185)
+Reducing Module items (top) (modules: 1, module items: 52, loc: 102)
+Reducing Module items (top) (modules: 1, module items: 51, loc: 98)
+Reducing Statements (top) (modules: 1, module items: 51, loc: 98)
+Reducing Remove constants in concat (modules: 1, module items: 51, loc: 98)
+Reducing Remove constants in concat (modules: 1, module items: 51, loc: 56)
+Reducing Cleaning (modules: 1, module items: 51, loc: 56)
+Reducing Cleaning (modules: 1, module items: 5, loc: 7)
+Verismith 03:13:11 fuzz_14 - ### Finished Reduction (0.084643206s) ###
+Verismith 03:13:11 fuzz_15 - Sampling Verilog from generator
+Verismith 03:13:11 fuzz_15 - Using first seed
+Verismith 03:13:11 fuzz_15 - Chose Seed 11410036520817006385 598115300188274055
+Verismith 03:13:11 fuzz_15 - Generated Verilog (0.09590146s)
+Verismith 03:13:11 fuzz_15 - ### Starting Synthesis ###
+Verismith 03:13:11 fuzz_15 - Running synthesis with identity
+Verismith 03:13:11 fuzz_15 - Finished synthesis with identity (0.005182121s,Pass ())
+Verismith 03:13:11 fuzz_15 - Running synthesis with yosys
+Verismith 03:13:39 fuzz_15 - Finished synthesis with yosys (27.969445564s,Pass ())
+Verismith 03:13:39 fuzz_15 - Running synthesis with vivado
+Verismith 03:13:39 fuzz_15 - Finished synthesis with vivado (0.014494492s,Fail SynthFail)
+[(0.005182121s,Pass ()),(27.969445564s,Pass ()),(0.014494492s,Fail SynthFail)]
+Verismith 03:13:39 fuzz_15 - ### Finished Synthesis (27.989477377s) ###
+Verismith 03:13:39 fuzz_15 - ### Starting Equivalence Check ###
+Verismith 03:13:39 fuzz_15 - Running equivalence check for identity and yosys
+Verismith 03:13:39 fuzz_15 - Finished equivalence check for identity and yosys (0.071714703s,Fail EquivError)
+[(0.071714703s,Fail EquivError)]
+Verismith 03:13:39 fuzz_15 - ### Finished Equivalence Check (0.072141943s) ###
+Verismith 03:13:39 fuzz_15 - ### Starting Simulation ###
+Verismith 03:13:39 fuzz_15 - Running simulation for identity
+Verismith 03:13:40 fuzz_15 - Finished simulation for identity (0.661381494s,Pass "\248A\EOT\219r\172\218\140")
+Verismith 03:13:40 fuzz_15 - Running simulation for identity
+Verismith 03:13:40 fuzz_15 - Finished simulation for identity (0.709493319s,Pass "\248A\EOT\219r\172\218\140")
+Verismith 03:13:40 fuzz_15 - Running simulation for yosys
+Verismith 03:13:43 fuzz_15 - Finished simulation for yosys (2.620106895s,Pass "\248A\EOT\219r\172\218\140")
+[Pass "f84104db72",Pass "f84104db72",Pass "f84104db72"]
+Verismith 03:13:43 fuzz_15 - ### Finished Simulation (3.991772095s) ###
+Verismith 03:13:43 fuzz_15 - ### Starting Reduction ###
+Reducing Modules (modules: 8, module items: 321, loc: 838)
+Reducing Modules (modules: 4, module items: 126, loc: 329)
+Reducing Modules (modules: 2, module items: 58, loc: 106)
+Reducing Modules (modules: 1, module items: 14, loc: 22)
+Reducing Module items (top) (modules: 1, module items: 14, loc: 22)
+Reducing Module items (top) (modules: 1, module items: 13, loc: 16)
+Reducing Statements (top) (modules: 1, module items: 13, loc: 16)
+Reducing Remove constants in concat (modules: 1, module items: 13, loc: 16)
+Reducing Remove constants in concat (modules: 1, module items: 13, loc: 16)
+Reducing Cleaning (modules: 1, module items: 13, loc: 16)
+Reducing Cleaning (modules: 1, module items: 7, loc: 10)
+Verismith 03:13:43 fuzz_15 - ### Finished Reduction (0.100302704s) ###

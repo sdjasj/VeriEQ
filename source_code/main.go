@@ -1,12 +1,12 @@
 package main
 
 import (
+	"VeriEQ/CodeGenerator"
 	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"goFuzzer/CodeGenerator"
 	"io"
 	"math/rand"
 	"os"
