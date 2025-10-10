@@ -1,0 +1,25 @@
+[10/09/25 07:25:03] INFO     Starting the job...                                                                                                 __main__.py:316
+                    INFO     >>> sudo cron && inv batch-test /app/verixmith/rtls VerilogCircuit SmtCircuit 10 --n-jobs=128                        __main__.py:29
+                                                                                                                                                                
+                    INFO     65cd4664e6b4e8beb98f7040f411ebb9790817802fd043dfb20107ce6ec897b8                                                     __main__.py:29
+                                                                                                                                                                
+[10/09/25 07:33:42] INFO     0                                                                                                                    __main__.py:29
+                                                                                                                                                                
+                    INFO     /home/verixmith/.local/lib/python3.12/site-packages/tree_sitter/__init__.py:36: FutureWarning: Language(path, name)  __main__.py:29
+                             is deprecated. Use Language(ptr, name) instead.                                                                                    
+                                                                                                                                                                
+                    INFO       warn("{} is deprecated. Use {} instead.".format(old, new), FutureWarning)                                          __main__.py:29
+                                                                                                                                                                
+                    INFO     Validation progress:   0% 0/8 [00:00<?, ?it/s]Validation progress:  12% 1/8 [02:49<19:49, 169.88s/it]Validation      __main__.py:29
+                             progress:  25% 2/8 [02:51<07:04, 70.77s/it] Validation progress:  38% 3/8 [03:10<03:56, 47.30s/it]Validation                       
+                             progress:  50% 4/8 [03:15<02:01, 30.45s/it]Validation progress:  62% 5/8 [03:23<01:07, 22.37s/it]Validation                        
+                             progress:  75% 6/8 [03:26<00:31, 15.90s/it]Validation progress:  88% 7/8 [04:21<00:28, 28.75s/it]Validation                        
+                             progress: 100% 8/8 [08:37<00:00, 101.02s/it]Validation progress: 100% 8/8 [08:37<00:00, 64.70s/it]                                 
+                                                                                                                                                                
+                    INFO     example1-20251009_072503_371504-failures                                                                             __main__.py:29
+                                                                                                                                                                
+                    INFO     ***** Collecting the results... *****                                                                                __main__.py:29
+                                                                                                                                                                
+                    INFO     chown: invalid user: ‘zyk:zyk’                                                                                       __main__.py:29
+                                                                                                                                                                
+                    INFO     Test done!       
