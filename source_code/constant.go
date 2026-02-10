@@ -10,5 +10,5 @@ const (
 	NumComplexBlocks = 25
 	TMPDIR           = "tmp/"
 	LOGDIR           = "log/"
-	CRASHDIR         = "crash/"
+	CRASHDIR         = "bug/"
 )

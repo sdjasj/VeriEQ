@@ -8,7 +8,7 @@ In this work, we propose VeriEQ, an automated framework based on the idea of met
 
 To help users understand the repository structure of VeriEQ, we provide the following explanation:
 
-`source_code`: the source code of VeriEQ in 4 Verilog Compilers
+`source_code/code`: the source code of VeriEQ in 4 Verilog Compilers
 
 - **Yosys**
 - **Verilator**
@@ -25,68 +25,24 @@ To help users understand the repository structure of VeriEQ, we provide the foll
   - The `Efficiency` directory contains experimental results showing the test case generation speed of the four Verilog compilers with and without VeriEQ’s inlined differential checking.
   - The `Accuracy` directory contains two false positives previously found by VeriEQ.
 
+`target`:This directory contains the source code of the four platforms under test, as well as the precompiled binaries built on Ubuntu 22.04.
+
+- `target/binary`: Precompiled binary files built on Ubuntu 22.04.
+- `target/source_code`: Source code of the four tested platforms.
+
+
+
 # Quickstart
 
+For detailed commands to run **VeriEQ**, please refer to the `README.md` file under `source_code/code`.
 
+If you need to compile the tested simulators and synthesizers by yourself, you can switch to the corresponding source directories under `target/source_code` and build them from source. The compilation steps can be found in the respective documentation.
 
-## VeriEQ for Yosys
-
-### prerequisites
-
-Setup Yosys environment, can be found in https://github.com/YosysHQ/yosys
-
-### start testing
-
-```
-cd source_code
-go build
-./VeriEQ --fuzzer yosys --count 10 --threads 100
-```
-
-
-
-## VeriEQ for Verilator
-
-### prerequisites
-
-Setup Verilator environment, can be found in https://github.com/verilator/verilator
-
-### start testing
-
-```
-cd source_code
-go build
-./VeriEQ --fuzzer verilator --count 10 --threads 100
-```
-
-
-
-## VeriEQ for CXXRTL
-
-### prerequisites
-
-Setup CXXRTL environment, can be found in https://github.com/YosysHQ/yosys
-
-### start testing
-
-```
-cd source_code
-go build
-./VeriEQ --fuzzer cxxrtl --count 10 --threads 100
-```
-
-
-
-## VeriEQ for IVerilog
-
-### prerequisites
-
-Setup IVerilog environment, can be found in https://github.com/steveicarus/iverilog
-
-### start testing
-
-```
-cd source_code
-go build
-./VeriEQ --fuzzer iverilog --count 10 --threads 100
-```
+* Yosys
+  * Setup Yosys environment, can be found in https://github.com/YosysHQ/yosys
+* Verilator
+  * Setup Verilator environment, can be found in https://github.com/verilator/verilator
+* cxxrtl
+  * Setup CXXRTL environment, can be found in https://github.com/YosysHQ/yosys
+* iverilog
+  * Setup IVerilog environment, can be found in https://github.com/steveicarus/iverilog

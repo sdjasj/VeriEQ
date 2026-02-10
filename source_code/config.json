@@ -1,0 +1,9 @@
+{
+  "binary_root": "../../target/binary",
+  "verilator_path": "",
+  "iverilog_path": "",
+  "yosys_path": "",
+  "yosys_config_path": "",
+  "clangxx_path": "clang++",
+  "tree_path": "tree"
+}
